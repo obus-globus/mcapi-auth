@@ -7,11 +7,23 @@ entry points (:func:`login`, :func:`login_via_browser`,
 """
 
 from .._constants import (
+    BEDROCK_ANDROID_CLIENT_ID,
+    BEDROCK_IOS_CLIENT_ID,
+    BEDROCK_NINTENDO_CLIENT_ID,
+    BEDROCK_PLAYSTATION_CLIENT_ID,
+    BEDROCK_WIN32_CLIENT_ID,
+    EDU_CLIENT_ID,
+    KNOWN_CLIENT_IDS,
     LIVE_CONNECT_DESKTOP_REDIRECT_URI,
     MINECRAFT_LAUNCHER_CLIENT_ID,
     MINECRAFT_LAUNCHER_V1_CLIENT_ID,
+    OFFICE365_API_EDITOR_CLIENT_ID,
     PRISM_LAUNCHER_CLIENT_ID,
     PRISM_LAUNCHER_REDIRECT_URI,
+    XBOX_APP_IOS_CLIENT_ID,
+    XBOX_GAMEPASS_IOS_CLIENT_ID,
+    is_v1_client_id,
+    resolve_client_id,
 )
 from ..exceptions import (
     AdultVerificationRequiredError,
@@ -65,11 +77,21 @@ from .token import MinecraftTokenInfo, decode_minecraft_access_token
 from .xbox import XboxLiveToken, XSTSToken, authenticate_xbl, authenticate_xsts
 
 __all__ = [
+    "BEDROCK_ANDROID_CLIENT_ID",
+    "BEDROCK_IOS_CLIENT_ID",
+    "BEDROCK_NINTENDO_CLIENT_ID",
+    "BEDROCK_PLAYSTATION_CLIENT_ID",
+    "BEDROCK_WIN32_CLIENT_ID",
+    "EDU_CLIENT_ID",
+    "KNOWN_CLIENT_IDS",
     "LIVE_CONNECT_DESKTOP_REDIRECT_URI",
     "MINECRAFT_LAUNCHER_CLIENT_ID",
     "MINECRAFT_LAUNCHER_V1_CLIENT_ID",
+    "OFFICE365_API_EDITOR_CLIENT_ID",
     "PRISM_LAUNCHER_CLIENT_ID",
     "PRISM_LAUNCHER_REDIRECT_URI",
+    "XBOX_APP_IOS_CLIENT_ID",
+    "XBOX_GAMEPASS_IOS_CLIENT_ID",
     "AdultVerificationRequiredError",
     "AuthorizationDeclinedError",
     "BrowserCookie",
@@ -114,6 +136,7 @@ __all__ = [
     "exchange_refresh_token",
     "extract_sisu_token",
     "fetch_entitlements",
+    "is_v1_client_id",
     "join_server",
     "login",
     "login_via_browser",
@@ -124,5 +147,6 @@ __all__ = [
     "login_with_xbox",
     "poll_for_device_code_token",
     "request_device_code",
+    "resolve_client_id",
     "xerr_to_exception",
 ]

@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-05-17
+
+### Added
+
+- A catalog of well-known Microsoft client_ids cross-referenced
+  against `gophertunnel`, `prismarine-auth`, and `RaphiMC/MinecraftAuth`.
+  New constants in :mod:`mcapi_auth` (and re-exported from
+  :mod:`mcapi_auth.auth`):
+  * ``BEDROCK_WIN32_CLIENT_ID = "0000000040159362"``
+  * ``BEDROCK_ANDROID_CLIENT_ID = "0000000048183522"``
+  * ``BEDROCK_IOS_CLIENT_ID = "000000004c17c01a"``
+  * ``BEDROCK_NINTENDO_CLIENT_ID = "00000000441cc96b"`` (Switch)
+  * ``BEDROCK_PLAYSTATION_CLIENT_ID = "000000004827c78e"``
+  * ``XBOX_APP_IOS_CLIENT_ID = "000000004c12ae6f"``
+  * ``XBOX_GAMEPASS_IOS_CLIENT_ID = "000000004c20a908"``
+  * ``EDU_CLIENT_ID = "b36b1432-1a1c-4c82-9b76-24de1cab42f2"``
+  * ``OFFICE365_API_EDITOR_CLIENT_ID = "389b1b32-b5d5-43b2-bddc-84ce938d6737"``
+- ``KNOWN_CLIENT_IDS`` — a ``dict[str, str]`` mapping friendly aliases
+  (``"java"``, ``"prism"``, ``"bedrock-nintendo"``, …) to the
+  respective client_id strings, suitable for CLI ``--client-id`` flags.
+- :func:`is_v1_client_id` — returns ``True`` for compressed
+  Live-Connect client_ids (16 hex chars, no dashes), ``False`` for
+  Azure-AD GUIDs. Use this to decide which auth flow to dispatch.
+- :func:`resolve_client_id` — looks up an alias in
+  ``KNOWN_CLIENT_IDS`` case-insensitively; passes raw IDs through.
+
 ## [0.6.2] - 2026-05-17
 
 ### Fixed

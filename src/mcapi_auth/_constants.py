@@ -49,6 +49,77 @@ LIVE_CONNECT_SCOPE_MBI_SSL: Final = "service::user.auth.xboxlive.com::MBI_SSL"
 # the v1 ``oauth20_*.srf`` endpoints expect.
 MINECRAFT_LAUNCHER_V1_CLIENT_ID: Final = "00000000402b5328"
 
+# --- Additional well-known Microsoft client_ids ------------------------
+#
+# All of the ``0000000…`` IDs below are compressed Live-Connect form and
+# **only** work against the v1 ``oauth20_*.srf`` endpoints with the
+# ``MBI_SSL`` scope. The GUID-form IDs (with dashes) work against the v2
+# ``/consumers/oauth2/v2.0/*`` endpoints with the ``XboxLive.signin``
+# scope. Source-cross-referenced against:
+#
+# * https://github.com/PrismarineJS/prismarine-auth (Titles enum)
+# * https://github.com/sandertv/gophertunnel (xbox.go device configs)
+# * https://github.com/RaphiMC/MinecraftAuth (MsaConstants.java)
+
+# Bedrock platform-specific client_ids. Xbox SISU enforces a
+# DeviceType/Version/UserAgent triple that has to match the client_id
+# — see the gophertunnel ``xbox.go`` device configs for the values
+# Mojang/Xbox actually expect.
+BEDROCK_WIN32_CLIENT_ID: Final = "0000000040159362"
+BEDROCK_ANDROID_CLIENT_ID: Final = "0000000048183522"
+BEDROCK_IOS_CLIENT_ID: Final = "000000004c17c01a"
+BEDROCK_NINTENDO_CLIENT_ID: Final = "00000000441cc96b"
+BEDROCK_PLAYSTATION_CLIENT_ID: Final = "000000004827c78e"
+
+# Other ``0000000…`` (v1/MBI_SSL) Microsoft client_ids the wider
+# ecosystem uses. prismarine-auth exposes these in its ``Titles`` enum.
+XBOX_APP_IOS_CLIENT_ID: Final = "000000004c12ae6f"
+XBOX_GAMEPASS_IOS_CLIENT_ID: Final = "000000004c20a908"
+
+# v2 / Azure-AD GUID client_ids (work with the consumers v2 endpoints
+# and the ``XboxLive.signin`` scope).
+EDU_CLIENT_ID: Final = "b36b1432-1a1c-4c82-9b76-24de1cab42f2"
+OFFICE365_API_EDITOR_CLIENT_ID: Final = "389b1b32-b5d5-43b2-bddc-84ce938d6737"
+
+# Mapping of friendly aliases → client_id strings, for use by CLIs and
+# config files. Use :func:`is_v1_client_id` to decide which auth flow
+# (v1 OOB / v2 PKCE) to dispatch.
+KNOWN_CLIENT_IDS: Final[dict[str, str]] = {
+    "java": MINECRAFT_LAUNCHER_V1_CLIENT_ID,
+    "prism": PRISM_LAUNCHER_CLIENT_ID,
+    "edu": EDU_CLIENT_ID,
+    "office365": OFFICE365_API_EDITOR_CLIENT_ID,
+    "bedrock-win32": BEDROCK_WIN32_CLIENT_ID,
+    "bedrock-android": BEDROCK_ANDROID_CLIENT_ID,
+    "bedrock-ios": BEDROCK_IOS_CLIENT_ID,
+    "bedrock-nintendo": BEDROCK_NINTENDO_CLIENT_ID,
+    "bedrock-playstation": BEDROCK_PLAYSTATION_CLIENT_ID,
+    "xbox-app-ios": XBOX_APP_IOS_CLIENT_ID,
+    "xbox-gamepass-ios": XBOX_GAMEPASS_IOS_CLIENT_ID,
+}
+
+
+def is_v1_client_id(client_id: str) -> bool:
+    """Return ``True`` if ``client_id`` is the compressed Live-Connect form.
+
+    v1 client_ids are 16 hex chars (no dashes) and only work against
+    ``login.live.com/oauth20_*.srf`` with the ``MBI_SSL`` scope. v2 IDs
+    are dashed UUIDs and work against ``login.microsoftonline.com/consumers/oauth2/v2.0/*``
+    with ``XboxLive.signin``.
+    """
+    return "-" not in client_id
+
+
+def resolve_client_id(name_or_id: str) -> str:
+    """Resolve an alias from :data:`KNOWN_CLIENT_IDS` or pass through a raw client_id.
+
+    Aliases are looked up case-insensitively. Anything that doesn't
+    match an alias is returned verbatim, so callers can freely pass
+    raw client_id strings.
+    """
+    return KNOWN_CLIENT_IDS.get(name_or_id.lower(), name_or_id)
+
+
 # SISU (Xbox Sign-In/Sign-Up). Returns XBL/XSTS tokens directly given
 # Microsoft browser cookies — no access/refresh token in the result.
 SISU_CONNECT_URL: Final = "https://sisu.xboxlive.com/connect/XboxLive/"
@@ -102,12 +173,19 @@ XERR_CHILD_ACCOUNT: Final = 2148916238  # needs Family Pack
 __all__ = [
     "API_MOJANG_BASE",
     "API_SERVICES_BASE",
+    "BEDROCK_ANDROID_CLIENT_ID",
+    "BEDROCK_IOS_CLIENT_ID",
+    "BEDROCK_NINTENDO_CLIENT_ID",
+    "BEDROCK_PLAYSTATION_CLIENT_ID",
+    "BEDROCK_WIN32_CLIENT_ID",
     "BLOCKED_SERVERS_URL",
     "BULK_USERNAME_LOOKUP_MAX",
     "BULK_USERNAME_TO_UUID_URL",
     "DEFAULT_API_USER_AGENT",
     "DEFAULT_HTTP_TIMEOUT",
     "DEFAULT_USER_AGENT",
+    "EDU_CLIENT_ID",
+    "KNOWN_CLIENT_IDS",
     "LIVE_CONNECT_AUTHORIZE_URL",
     "LIVE_CONNECT_DESKTOP_REDIRECT_URI",
     "LIVE_CONNECT_SCOPE_MBI_SSL",
@@ -122,6 +200,7 @@ __all__ = [
     "MSA_DEVICE_CODE_URL",
     "MSA_SCOPE",
     "MSA_TOKEN_URL",
+    "OFFICE365_API_EDITOR_CLIENT_ID",
     "PISTON_META_BASE",
     "PRISM_LAUNCHER_CLIENT_ID",
     "PRISM_LAUNCHER_REDIRECT_URI",
@@ -142,6 +221,8 @@ __all__ = [
     "UUID_TO_PROFILE_URL",
     "VERSION_MANIFEST_V2_URL",
     "XBL_AUTH_URL",
+    "XBOX_APP_IOS_CLIENT_ID",
+    "XBOX_GAMEPASS_IOS_CLIENT_ID",
     "XERR_CHILD_ACCOUNT",
     "XERR_NO_XBOX_ACCOUNT",
     "XERR_REGION_BLOCKED",
@@ -149,6 +230,8 @@ __all__ = [
     "XERR_VERIFY_AGE_REQUIRED",
     "XSTS_AUTH_URL",
     "XSTS_RELYING_PARTY",
+    "is_v1_client_id",
+    "resolve_client_id",
 ]
 
 # --- API (REST) endpoints --------------------------------------------
