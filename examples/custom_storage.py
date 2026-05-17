@@ -9,7 +9,6 @@ SQLite-backed one. The protocol is just two async methods: `load()`
 returning `str | None`, and `save(refresh_token)` returning `None`.
 """
 
-
 import asyncio
 import sqlite3
 from pathlib import Path

@@ -24,7 +24,6 @@ to force the account picker (useful when more than one MS account is
 signed in to the browser).
 """
 
-
 import asyncio
 import logging
 

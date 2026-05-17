@@ -8,7 +8,6 @@ username, and `exp` tells you when it expires. Useful for:
   other component (e.g. a launcher bridge).
 """
 
-
 import sys
 
 from whenever import Instant

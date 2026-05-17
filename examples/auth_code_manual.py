@@ -16,7 +16,6 @@ Skeleton:
    `MinecraftSession`.
 """
 
-
 import asyncio
 import secrets
 

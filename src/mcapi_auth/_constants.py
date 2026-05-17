@@ -180,21 +180,23 @@ KNOWN_CLIENT_REDIRECTS: Final[dict[str, tuple[str, str]]] = {
 # device-code, OR (for v1) the OOB browser flow. The set is *queried*
 # inside the loopback branch of a dispatcher; v1 client_ids only reach
 # that branch under ``--force-flow``, so the warning is meaningful.
-BROWSER_UNSUPPORTED_CLIENT_IDS: Final[frozenset[str]] = frozenset({
-    # v2 GUIDs with no loopback reply URL registered.
-    EDU_CLIENT_ID,
-    OFFICE365_API_EDITOR_CLIENT_ID,
-    # v1 / Live-Connect IDs — incompatible with the v2 consumers
-    # endpoint that ``login_via_browser`` targets.
-    MINECRAFT_LAUNCHER_V1_CLIENT_ID,
-    BEDROCK_WIN32_CLIENT_ID,
-    BEDROCK_ANDROID_CLIENT_ID,
-    BEDROCK_IOS_CLIENT_ID,
-    BEDROCK_NINTENDO_CLIENT_ID,
-    BEDROCK_PLAYSTATION_CLIENT_ID,
-    XBOX_APP_IOS_CLIENT_ID,
-    XBOX_GAMEPASS_IOS_CLIENT_ID,
-})
+BROWSER_UNSUPPORTED_CLIENT_IDS: Final[frozenset[str]] = frozenset(
+    {
+        # v2 GUIDs with no loopback reply URL registered.
+        EDU_CLIENT_ID,
+        OFFICE365_API_EDITOR_CLIENT_ID,
+        # v1 / Live-Connect IDs — incompatible with the v2 consumers
+        # endpoint that ``login_via_browser`` targets.
+        MINECRAFT_LAUNCHER_V1_CLIENT_ID,
+        BEDROCK_WIN32_CLIENT_ID,
+        BEDROCK_ANDROID_CLIENT_ID,
+        BEDROCK_IOS_CLIENT_ID,
+        BEDROCK_NINTENDO_CLIENT_ID,
+        BEDROCK_PLAYSTATION_CLIENT_ID,
+        XBOX_APP_IOS_CLIENT_ID,
+        XBOX_GAMEPASS_IOS_CLIENT_ID,
+    }
+)
 
 
 def resolve_browser_redirect(client_id: str) -> tuple[str, str] | None:

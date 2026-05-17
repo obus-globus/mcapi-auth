@@ -47,6 +47,7 @@ from ..exceptions import (
     XSTSError,
     xerr_to_exception,
 )
+from .app_config import MsaApplicationConfig
 from .auth_code import (
     PKCEChallenge,
     acquire_msa_via_browser,
@@ -55,6 +56,7 @@ from .auth_code import (
     create_pkce_challenge,
     exchange_authorization_code,
 )
+from .chain import AuthChain, ChainChangeListener
 from .cookies import (
     BrowserCookie,
     CookieAuthError,
@@ -67,7 +69,8 @@ from .cookies import (
 )
 from .entitlements import Entitlements, derive_entitlement_flags, fetch_entitlements
 from .flow import DeviceCodeCallback, login, login_via_browser, login_via_browser_v1
-from .minecraft import login_with_xbox
+from .holder import ChangeListener, Holder
+from .minecraft import MinecraftProfile, MinecraftToken, login_with_xbox
 from .msa import (
     DeviceCodePrompt,
     MSATokens,
@@ -101,8 +104,11 @@ __all__ = [
     "XBOX_APP_IOS_CLIENT_ID",
     "XBOX_GAMEPASS_IOS_CLIENT_ID",
     "AdultVerificationRequiredError",
+    "AuthChain",
     "AuthorizationDeclinedError",
     "BrowserCookie",
+    "ChainChangeListener",
+    "ChangeListener",
     "ChildAccountError",
     "CookieAuthError",
     "DeviceCodeCallback",
@@ -110,15 +116,19 @@ __all__ = [
     "DeviceCodePrompt",
     "Entitlements",
     "FileTokenStorage",
+    "Holder",
     "JoinServerError",
     "MSAAuthError",
     "MSAFlowError",
     "MSATokens",
     "McAuthError",
     "MinecraftAuthError",
+    "MinecraftProfile",
     "MinecraftProfileNotFoundError",
     "MinecraftSession",
+    "MinecraftToken",
     "MinecraftTokenInfo",
+    "MsaApplicationConfig",
     "NoXboxAccountError",
     "NullTokenStorage",
     "PKCEChallenge",

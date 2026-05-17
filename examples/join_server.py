@@ -13,7 +13,6 @@ Typical flow:
    profile / hash pair within the next ~30s.
 """
 
-
 import asyncio
 
 from mcapi_auth import join_server, login

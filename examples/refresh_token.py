@@ -10,7 +10,6 @@ Useful when you persist refresh tokens somewhere other than
 your orchestrator, ...).
 """
 
-
 import asyncio
 import os
 import sys

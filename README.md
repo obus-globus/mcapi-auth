@@ -274,6 +274,76 @@ A few additional auth-side helpers:
   `sessionserver.mojang.com/session/minecraft/join`, for proving profile
   ownership during a third-party-server handshake.
 
+## Long-running apps — `AuthChain` + `Holder`
+
+For apps that hold a single account open for hours/days,
+`mcapi_auth.AuthChain` wraps the full MSA → XBL → XSTS → Minecraft
+token chain with per-stage lazy refresh and listeners. Each stage is a
+`Holder[T]` that knows how to refresh itself when expired; downstream
+holders are invalidated automatically on MSA rotation.
+
+```python
+from mcapi_auth import AuthChain, MsaApplicationConfig
+
+chain = await AuthChain.login(app=MsaApplicationConfig.from_known("prism"))
+
+# Persist on every rotation:
+chain.on_change(lambda stage, _old, _new: state.save(chain.dump_json()))
+
+while running:
+    mc = await chain.get_minecraft_token()    # refreshes if expired
+    await do_stuff(mc.access_token)
+```
+
+Restoring across restarts retains XBL+XSTS so you don't re-derive the
+chain on cold start:
+
+```python
+chain = AuthChain.load_json(state.load(), app=MsaApplicationConfig.from_known("prism"))
+mc = await chain.get_minecraft_token()   # uses cached values when fresh
+```
+
+`MsaApplicationConfig` bundles `(client_id, scope, authorize_url,
+token_url, device_code_url, redirect_uri, xbl_use_d_prefix, is_v1)` so
+the same config can be threaded through every helper:
+
+- `MsaApplicationConfig.v2(client_id=...)` — modern consumers endpoint.
+- `MsaApplicationConfig.v1_launcher(client_id=...)` — legacy
+  Live-Connect endpoint, MBI_SSL scope, raw RPS ticket.
+- `MsaApplicationConfig.from_known(alias)` — resolve an alias
+  (`"prism"`, `"java"`, `"liquidlauncher"`, `"bedrock-android"`, …)
+  into the correctly-shaped v1 or v2 config, with the known redirect
+  override applied.
+
+## Realms (Java edition)
+
+```python
+from mcapi_auth import (
+    accept_realms_tos,
+    fetch_realms_join_info,
+    fetch_realms_worlds,
+    is_realms_tos_agreed,
+)
+
+if not await is_realms_tos_agreed(session):
+    await accept_realms_tos(session)
+
+for world in await fetch_realms_worlds(session):
+    print(world.world_id, world.name, world.owner_username)
+
+info = await fetch_realms_join_info(session, world.world_id)
+print(info.host, info.port)
+```
+
+All Realms calls accept any `MinecraftSession`-like object (anything
+exposing `access_token` + `uuid` + `username`), including an
+`AuthChain.to_session()` result. The `version=` cookie defaults to
+`mcapi_auth.DEFAULT_REALMS_GAME_VERSION` (currently `"1.21.4"`); pass
+`game_version="..."` to override.
+
+Bedrock realms are not implemented (Bedrock uses a different API and
+different XSTS relying party).
+
 ## More examples
 
 See [`examples/`](examples/) for runnable scripts covering each entry

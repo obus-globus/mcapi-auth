@@ -7,6 +7,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-05-17
+
+### Added
+
+- **``MsaApplicationConfig``** — frozen dataclass bundling the MSA OAuth
+  parameters (``client_id``, ``scope``, ``authorize_url``,
+  ``token_url``, ``device_code_url``, ``redirect_uri``,
+  ``xbl_use_d_prefix``, ``is_v1``) for reuse across calls. Comes with
+  ``MsaApplicationConfig.v2()`` / ``.v1_launcher()`` factories and
+  ``.from_known(alias)`` to resolve a friendly alias from
+  ``KNOWN_CLIENT_IDS`` into a correctly-shaped v1 or v2 config.
+- **``Holder[T]``** — generic lazy-refresh wrapper. Wraps a value that
+  has an expiry instant + an async refresher; ``get_up_to_date()``
+  refreshes if expired (with optional ``leeway`` and ``force``).
+  Supports sync + async change listeners via ``add_listener``; a single
+  in-flight refresh is shared across concurrent callers.
+  Inspired by ``net.raphimc.minecraftauth.util.holder.Holder``.
+- **``AuthChain``** — full MSA → XBL → XSTS → Minecraft state with
+  per-stage ``Holder`` wrapping. Exposes ``get_msa_tokens()``,
+  ``get_xbl_token()``, ``get_xsts_token()``, ``get_minecraft_token()``,
+  ``get_profile()`` (all lazy-refreshing); ``on_change(cb)`` for
+  chain-wide listeners receiving ``(stage_name, old, new)``;
+  ``dump_json()``/``load_json()`` for full state serialisation
+  (including cached XBL/XSTS tokens) so cold starts skip the chain when
+  nothing has expired; ``from_session(...)`` to bridge an existing
+  ``MinecraftSession``; ``to_session()`` to snapshot back into the flat
+  form. MSA rotation invalidates downstream holders automatically.
+- **Realms API** (``mcapi_auth.api.realms``) — Java edition Realms
+  surface: ``fetch_realms_worlds``, ``fetch_realms_world``,
+  ``fetch_realms_join_info``, ``fetch_realms_compatible``,
+  ``is_realms_available``, ``is_realms_tos_agreed``,
+  ``accept_realms_tos``. Pydantic models: ``RealmsWorld``,
+  ``RealmsJoinInfo``, ``RealmsPlayer``, ``RealmsCompatibility``.
+  Typed ``RealmsTosError`` raised when an account hasn't accepted the
+  TOS. All endpoints accept any ``TokenLike`` that exposes ``uuid`` +
+  ``username`` (i.e. ``MinecraftSession``); raw access tokens require
+  explicit ``uuid=`` / ``username=`` kwargs.
+  Bedrock realms remain out of scope.
+- ``DEFAULT_REALMS_GAME_VERSION`` constant (default ``"1.21.4"``)
+  exposed for callers that need to override the ``version`` cookie.
+
+### Notes
+
+- Bedrock-edition full chain, ``MinecraftPlayerCertificates``, and
+  PlayFab tokens deliberately remain unimplemented and are tracked for
+  later work; see the README "Roadmap" section.
+
 ## [0.7.4] - 2026-05-17
 
 ### Changed

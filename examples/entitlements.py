@@ -4,7 +4,6 @@ edition — but that's also what you get for Bedrock-only and Game-Pass
 users. To tell them apart, hit `/entitlements/mcstore` directly.
 """
 
-
 import asyncio
 
 from mcapi_auth import derive_entitlement_flags, fetch_entitlements, login
