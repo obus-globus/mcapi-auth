@@ -1,0 +1,51 @@
+"""Tests for the XErr-code → exception mapping."""
+
+from __future__ import annotations
+
+import pytest
+
+from mcapi_auth import _constants as c
+from mcapi_auth.exceptions import (
+    AdultVerificationRequiredError,
+    ChildAccountError,
+    NoXboxAccountError,
+    RegionBlockedError,
+    VerifyAgeRequiredError,
+    XSTSError,
+    xerr_to_exception,
+)
+
+
+@pytest.mark.parametrize(
+    ("xerr", "expected_cls"),
+    [
+        (c.XERR_NO_XBOX_ACCOUNT, NoXboxAccountError),
+        (c.XERR_REGION_BLOCKED, RegionBlockedError),
+        (c.XERR_VERIFY_AGE_REQUIRED, VerifyAgeRequiredError),
+        (c.XERR_REQUIRES_ADULT_VERIFICATION, AdultVerificationRequiredError),
+        (c.XERR_CHILD_ACCOUNT, ChildAccountError),
+    ],
+)
+def test_known_xerr_codes_map_to_typed_exceptions(xerr: int, expected_cls: type[XSTSError]) -> None:
+    exc = xerr_to_exception(xerr)
+    assert isinstance(exc, expected_cls)
+    assert exc.xerr == xerr
+    assert str(exc)  # nonempty message
+
+
+def test_unknown_xerr_falls_back_to_generic_xsts_error() -> None:
+    exc = xerr_to_exception(9999)
+    assert type(exc) is XSTSError
+    assert exc.xerr == 9999
+    assert "9999" in str(exc)
+
+
+def test_missing_xerr_still_yields_an_exception() -> None:
+    exc = xerr_to_exception(None)
+    assert isinstance(exc, XSTSError)
+    assert exc.xerr is None
+
+
+def test_child_account_message_mentions_family_pack() -> None:
+    exc = xerr_to_exception(c.XERR_CHILD_ACCOUNT)
+    assert "Family" in str(exc) or "family" in str(exc)
