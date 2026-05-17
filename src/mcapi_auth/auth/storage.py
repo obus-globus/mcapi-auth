@@ -11,6 +11,7 @@ re-derived on every call.
 
 from __future__ import annotations
 
+import asyncio
 import contextlib
 import json
 import logging
@@ -68,6 +69,9 @@ class FileTokenStorage:
         return self._path
 
     async def load(self) -> str | None:
+        return await asyncio.to_thread(self._load_sync)
+
+    def _load_sync(self) -> str | None:
         try:
             raw = self._path.read_text(encoding="utf-8")
         except FileNotFoundError:
@@ -87,6 +91,9 @@ class FileTokenStorage:
         return token if isinstance(token, str) and token else None
 
     async def save(self, refresh_token: str) -> None:
+        await asyncio.to_thread(self._save_sync, refresh_token)
+
+    def _save_sync(self, refresh_token: str) -> None:
         self._path.parent.mkdir(parents=True, exist_ok=True)
         payload = json.dumps({"refresh_token": refresh_token})
         # Atomic write: temp file in the same dir, then os.replace.
@@ -104,5 +111,8 @@ class FileTokenStorage:
             raise
 
     async def clear(self) -> None:
+        await asyncio.to_thread(self._clear_sync)
+
+    def _clear_sync(self) -> None:
         with contextlib.suppress(FileNotFoundError):
             self._path.unlink()
