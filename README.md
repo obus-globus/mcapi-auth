@@ -344,6 +344,26 @@ exposing `access_token` + `uuid` + `username`), including an
 Bedrock realms are not implemented (Bedrock uses a different API and
 different XSTS relying party).
 
+## Player chat-signing certificates (1.19+)
+
+Minecraft 1.19 introduced signed chat (and chat reporting in 1.19.1+);
+the client must fetch a Mojang-signed RSA key-pair from
+`/player/certificates` and sign outbound messages with it.
+
+```python
+from mcapi_auth import fetch_player_certificates
+
+certs = await fetch_player_certificates(session)
+print(certs.expires_at, certs.refreshed_after)
+public_der = certs.key_pair.public_key_der()        # raw DER bytes
+mojang_sig = certs.public_key_signature_v2_bytes    # base64-decoded
+```
+
+`MinecraftKeyPair.public_key` / `private_key` are PEM strings;
+`.public_key_der()` / `.private_key_der()` strip the PEM armor and
+base64-decode for you. No `cryptography` dependency — load the keys
+with your preferred crypto library if you need to sign.
+
 ## More examples
 
 See [`examples/`](examples/) for runnable scripts covering each entry

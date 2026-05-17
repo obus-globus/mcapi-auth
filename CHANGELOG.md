@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-05-17
+
+### Added
+
+- **``MinecraftPlayerCertificates``** + ``fetch_player_certificates`` —
+  the ``POST /player/certificates`` endpoint (Minecraft 1.19+ signed
+  chat). Returns ``MinecraftKeyPair`` (PEM strings + DER decode
+  helpers), ``public_key_signature_v2`` (base64 + decoded bytes
+  property), the legacy ``public_key_signature``, plus ``expires_at``
+  and ``refreshed_after`` instants. Accepts any ``TokenLike``.
+  No ``cryptography`` dependency — keys exposed as PEM/DER bytes for
+  callers to load with their preferred crypto library.
+
 ## [0.8.0] - 2026-05-17
 
 ### Added

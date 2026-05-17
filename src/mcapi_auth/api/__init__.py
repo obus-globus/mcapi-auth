@@ -53,6 +53,11 @@ from .meta import (
     VersionManifest,
     fetch_version_manifest,
 )
+from .player_certificates import (
+    MinecraftKeyPair,
+    MinecraftPlayerCertificates,
+    fetch_player_certificates,
+)
 from .profile import (
     NameLookupResult,
     ProfileProperty,
@@ -98,6 +103,8 @@ __all__ = [
     "HttpError",
     "InvalidProfileError",
     "McApiError",
+    "MinecraftKeyPair",
+    "MinecraftPlayerCertificates",
     "NameAvailability",
     "NameChangeEligibility",
     "NameLookupResult",
@@ -134,6 +141,7 @@ __all__ = [
     "disable_cape",
     "extract_textures",
     "fetch_blocked_servers",
+    "fetch_player_certificates",
     "fetch_realms_compatible",
     "fetch_realms_join_info",
     "fetch_realms_world",
