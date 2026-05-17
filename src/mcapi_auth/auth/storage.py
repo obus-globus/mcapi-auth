@@ -3,7 +3,7 @@
 By default, the MSA refresh token is stored as JSON in an XDG state file
 with ``0600`` permissions. Callers that need anything else (keyring,
 encrypted blob, in-memory only) implement the :class:`TokenStorage`
-:class:`Protocol` and pass an instance to :func:`mcauth.login`.
+:class:`Protocol` and pass an instance to :func:`mcapi_auth.login`.
 
 Only the refresh token is persisted — short-lived access tokens are
 re-derived on every call.
@@ -73,12 +73,12 @@ class FileTokenStorage:
         except FileNotFoundError:
             return None
         except OSError as e:
-            logger.warning("mcauth: cannot read refresh-token file %s: %s", self._path, e)
+            logger.warning("mcapi_auth: cannot read refresh-token file %s: %s", self._path, e)
             return None
         try:
             data: object = json.loads(raw)
         except json.JSONDecodeError:
-            logger.warning("mcauth: refresh-token file %s is not valid JSON", self._path)
+            logger.warning("mcapi_auth: refresh-token file %s is not valid JSON", self._path)
             return None
         if not isinstance(data, dict):
             return None
@@ -90,7 +90,7 @@ class FileTokenStorage:
         self._path.parent.mkdir(parents=True, exist_ok=True)
         payload = json.dumps({"refresh_token": refresh_token})
         # Atomic write: temp file in the same dir, then os.replace.
-        fd, tmp_path = tempfile.mkstemp(prefix=".mcauth-", suffix=".tmp", dir=self._path.parent)
+        fd, tmp_path = tempfile.mkstemp(prefix=".mcapi_auth-", suffix=".tmp", dir=self._path.parent)
         tmp = Path(tmp_path)
         try:
             with os.fdopen(fd, "w", encoding="utf-8") as f:

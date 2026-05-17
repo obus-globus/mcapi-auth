@@ -38,7 +38,7 @@ class DeviceCodePrompt(McModel):
     """Information shown to the user during the device-code flow.
 
     Pass a callback of ``(prompt: DeviceCodePrompt) -> None`` to
-    :func:`mcauth.login` to control how the user is informed of the URL +
+    :func:`mcapi_auth.login` to control how the user is informed of the URL +
     code they must visit.
     """
 

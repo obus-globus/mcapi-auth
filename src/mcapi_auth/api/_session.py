@@ -2,9 +2,9 @@
 
 Authed endpoints accept either a raw Minecraft access-token string OR any
 object that exposes an ``access_token`` attribute — which is precisely the
-shape of :class:`mcauth.MinecraftSession`.
+shape of :class:`mcapi_auth.MinecraftSession`.
 
-The duck-typed check means mcapi has zero runtime dependency on mcauth;
+The duck-typed check means the API half of the library has zero hard coupling to the auth half;
 you can plug in any session-like object (a custom dataclass, a Pydantic
 model, …) as long as it carries the token in the same attribute name.
 """

@@ -1,4 +1,4 @@
-"""Plug a custom `TokenStorage` into `mcauth.login()`.
+"""Plug a custom `TokenStorage` into `mcapi_auth.login()`.
 
 `FileTokenStorage` (XDG state dir, atomic write, 0600 perms) is fine for
 single-user desktop apps. For services, you'll want to put refresh

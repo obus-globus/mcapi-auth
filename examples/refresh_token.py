@@ -1,6 +1,6 @@
 """Reuse a saved refresh token — skip the device-code prompt entirely.
 
-`mcauth.login()` already does this for you transparently (it tries the
+`mcapi_auth.login()` already does this for you transparently (it tries the
 stored refresh token first and only falls back to device-code on
 failure). This example shows the *low-level* refresh path: take a
 refresh token you already have in hand and turn it into a fresh

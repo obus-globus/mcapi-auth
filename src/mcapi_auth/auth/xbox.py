@@ -115,7 +115,7 @@ async def authenticate_xsts(
     """Exchange an XBL token for an XSTS token for Minecraft Services.
 
     Raises a typed XErr exception on 401 — see
-    :func:`mcauth.exceptions.xerr_to_exception` for the mapping.
+    :func:`mcapi_auth.exceptions.xerr_to_exception` for the mapping.
     """
     payload = {
         "Properties": {"SandboxId": "RETAIL", "UserTokens": [xbl_token]},

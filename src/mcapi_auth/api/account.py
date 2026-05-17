@@ -1,12 +1,12 @@
 """Authenticated profile / skin / cape / name endpoints.
 
 Every function in this module takes a ``token: TokenLike`` — either a raw
-Minecraft access-token string or a :class:`mcauth.MinecraftSession` (anything
+Minecraft access-token string or a :class:`mcapi_auth.MinecraftSession` (anything
 exposing an ``access_token`` attribute).
 
 Responses are wrapped in :class:`OwnProfile` / :class:`NameAvailability` /
 :class:`NameChangeEligibility` Pydantic models. The Mojang ``error`` JSON is
-mapped to :mod:`mcapi.exceptions` subclasses by status code, so callers
+mapped to :mod:`mcapi_auth.exceptions` subclasses by status code, so callers
 can ``except NameTakenError`` rather than parsing strings.
 """
 

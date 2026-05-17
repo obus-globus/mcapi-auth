@@ -3,7 +3,7 @@
 All three functions here hit ``api.mojang.com`` / ``sessionserver.mojang.com``.
 The endpoints are rate-limited (Mojang's documented number is ~600 req per
 10 min per IP for the GET name→UUID path; bulk POSTs share a similar bucket).
-A 429 response surfaces as :class:`mcapi.RateLimitedError`.
+A 429 response surfaces as :class:`mcapi_auth.RateLimitedError`.
 """
 
 from __future__ import annotations
@@ -61,7 +61,7 @@ class ProfileProperty(McModel):
     """A single property attached to a session-server profile.
 
     For the well-known ``textures`` property, ``value`` is the raw base64
-    string — call :func:`mcapi.textures.decode_texture_property` on it (or
+    string — call :func:`mcapi_auth.api.textures.decode_texture_property` on it (or
     use :attr:`PublicProfile.textures_property`) to get a structured view.
     """
 

@@ -8,7 +8,7 @@ by Mojang directly to us, so reading its ``exp`` and embedded profile
 saves a round-trip to ``/minecraft/profile``.
 
 This module is leaf-pure: no network, no I/O, no third-party deps. The
-JWT is decoded manually (base64url + JSON) so :mod:`mcauth` stays a
+JWT is decoded manually (base64url + JSON) so :mod:`mcapi_auth` stays a
 single-runtime-dep package.
 """
 

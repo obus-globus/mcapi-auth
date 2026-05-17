@@ -1,6 +1,6 @@
 """Shared Pydantic plumbing.
 
-Defines :class:`McModel`, the frozen base every response model in mcauth
+Defines :class:`McModel`, the frozen base every response model in mcapi_auth
 inherits from, plus :data:`InstantField` for whenever-typed timestamps.
 
 The aliasing strategy here is deliberately home-grown rather than using
@@ -37,7 +37,7 @@ InstantField = Annotated[
 
 
 class McModel(BaseModel):
-    """Common Pydantic configuration for every response model in mcauth."""
+    """Common Pydantic configuration for every response model in mcapi_auth."""
 
     model_config = ConfigDict(
         frozen=True,

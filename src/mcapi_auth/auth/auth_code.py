@@ -15,13 +15,13 @@ This module provides:
 
 Typical usage::
 
-    from mcauth.auth_code import acquire_msa_via_browser
+    from mcapi_auth.auth.auth_code import acquire_msa_via_browser
 
     msa = await acquire_msa_via_browser()
     # msa.access_token / msa.refresh_token are now valid.
 
 For the *full* MS → Xbox → Mojang chain returning a
-``MinecraftSession``, see :func:`mcauth.login_via_browser`.
+``MinecraftSession``, see :func:`mcapi_auth.login_via_browser`.
 """
 
 from __future__ import annotations

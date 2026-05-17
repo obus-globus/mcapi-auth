@@ -12,7 +12,7 @@ Three options ship, in order of preference:
 
 1. :func:`login_with_cookies_msa_v1` — the legacy Live-Connect
    public-client flow used by the official Minecraft Launcher.
-   Returns full :class:`~mcauth.msa.MSATokens` (access + refresh +
+   Returns full :class:`~mcapi_auth.auth.msa.MSATokens` (access + refresh +
    expiry). Preferred whenever it works.
 2. :func:`login_with_cookies_prism` — Azure-AD consumers flow using
    PrismLauncher's client_id. More involved (Microsoft sometimes

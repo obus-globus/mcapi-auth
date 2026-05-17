@@ -1,12 +1,12 @@
 """Authorization-code (browser) login example.
 
-Demonstrates :func:`mcauth.login_via_browser`. Run with::
+Demonstrates :func:`mcapi_auth.login_via_browser`. Run with::
 
     uv run python examples/browser_login.py
 
 What happens:
 
-1. mcauth picks a free localhost TCP port and starts a tiny listener
+1. mcapi_auth picks a free localhost TCP port and starts a tiny listener
    on it.
 2. Your default browser opens to ``login.microsoftonline.com``. If
    you're already signed in to a Microsoft account, you'll typically

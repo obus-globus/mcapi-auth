@@ -17,14 +17,14 @@ def _now() -> Instant:
 class MinecraftSession(McModel):
     """A successful Minecraft authentication.
 
-    All fields are required. Construct via :func:`mcauth.login` rather than
+    All fields are required. Construct via :func:`mcapi_auth.login` rather than
     instantiating directly.
 
     Attributes:
         access_token: Bearer token for ``api.minecraftservices.com`` and
             for Mojang's ``sessionserver`` joinServer call.
         refresh_token: Microsoft OAuth refresh token. Persist this (see
-            :mod:`mcauth.storage`) to skip the device-code flow next time.
+            :mod:`mcapi_auth.auth.storage`) to skip the device-code flow next time.
         uuid: Undashed UUID returned by ``/minecraft/profile``. Matches
             Mojang's wire format for ``selectedProfile``.
         username: Current Minecraft username for ``uuid``.

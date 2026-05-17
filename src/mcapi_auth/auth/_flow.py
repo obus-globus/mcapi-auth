@@ -68,7 +68,7 @@ async def login(
             :class:`FileTokenStorage` at the XDG state path. Pass an
             in-memory implementation to disable persistence.
         on_device_code: Awaitable called with the
-            :class:`~mcauth.msa.DeviceCodePrompt` when the user needs to
+            :class:`~mcapi_auth.auth.msa.DeviceCodePrompt` when the user needs to
             visit a URL. Only invoked when refresh-token reuse fails.
         client_id: MSA OAuth client_id. Defaults to the well-known
             public Minecraft Launcher client_id.
@@ -124,7 +124,7 @@ async def _acquire_msa_tokens(
             )
         except MSAFlowError as e:
             logger.info(
-                "mcauth: stored refresh token rejected (%s), falling back to device-code",
+                "mcapi_auth: stored refresh token rejected (%s), falling back to device-code",
                 type(e).__name__,
             )
             await storage.clear()
@@ -150,7 +150,7 @@ async def login_via_browser(
     """Run the full auth chain via the authorization-code (browser) flow.
 
     Mirror of :func:`login` but uses
-    :func:`mcauth.auth_code.acquire_msa_via_browser` for the MSA step
+    :func:`mcapi_auth.auth.auth_code.acquire_msa_via_browser` for the MSA step
     instead of device-code: a localhost HTTP listener is started, the
     user's browser is opened to the MSA authorize URL, and we wait for
     the redirect callback (validating CSRF ``state``).
@@ -195,7 +195,7 @@ async def login_via_browser(
             )
         except MSAFlowError as e:
             logger.info(
-                "mcauth: stored refresh token rejected, falling back to browser flow: %s", e
+                "mcapi_auth: stored refresh token rejected, falling back to browser flow: %s", e
             )
             await actual_storage.clear()
 

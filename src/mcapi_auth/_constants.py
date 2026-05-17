@@ -16,7 +16,7 @@ from typing import Final
 # ``/consumers/oauth2/v2.0/*`` endpoints we use. The same logical client
 # also exists in MSA's older Live-Connect compressed form
 # ("00000000402b5328"), but that one requires the ``login.live.com``
-# ``/oauth20_*.srf`` endpoints which mcauth doesn't currently target —
+# ``/oauth20_*.srf`` endpoints which mcapi_auth doesn't currently target —
 # don't substitute it without also overriding the auth/token URLs.
 MINECRAFT_LAUNCHER_CLIENT_ID: Final = "00000000-402b-4cd3-a82b-c45ab2f1d3f7"
 
@@ -25,7 +25,7 @@ MINECRAFT_LAUNCHER_CLIENT_ID: Final = "00000000-402b-4cd3-a82b-c45ab2f1d3f7"
 # alternative when you want to attribute auth attempts to a Prism-style
 # client without using the (shared) launcher client_id above. Note that
 # Prism's redirect URI is the funky ``http://127.0.0.1:1`` — pass it
-# explicitly to :func:`mcauth.auth_code.build_authorize_url`.
+# explicitly to :func:`mcapi_auth.auth.auth_code.build_authorize_url`.
 PRISM_LAUNCHER_CLIENT_ID: Final = "c36a9fb6-4f2a-41ff-90bd-ae7cc92031eb"
 PRISM_LAUNCHER_REDIRECT_URI: Final = "http://127.0.0.1:1"
 
@@ -92,7 +92,7 @@ DEFAULT_HTTP_TIMEOUT: Final = 30.0
 MIN_DEVICE_CODE_POLL_INTERVAL: Final = 1.0
 
 # XErr codes the XSTS endpoint returns under HTTP 401. Mapped to typed
-# exceptions in :mod:`mcauth.exceptions`. Source: every open-source
+# exceptions in :mod:`mcapi_auth.exceptions`. Source: every open-source
 # launcher's auth notes; these are stable.
 #
 # Reference: https://wiki.vg/Microsoft_Authentication_Scheme (community)
@@ -154,7 +154,7 @@ __all__ = [
     "XSTS_RELYING_PARTY",
 ]
 
-# --- mcapi (REST API) endpoints --------------------------------------------
+# --- API (REST) endpoints --------------------------------------------
 
 API_MOJANG_BASE: Final = "https://api.mojang.com"
 SESSION_SERVER_BASE: Final = "https://sessionserver.mojang.com"
