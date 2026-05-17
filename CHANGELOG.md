@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.3] - 2026-05-17
+
+### Added
+
+- `KNOWN_CLIENT_REDIRECTS` now includes Prism Launcher
+  (`c36a9fb6-…`): registered as `http://127.0.0.1:*/` (root path, any
+  port). Without this override the default `/callback` path was
+  rejected with `invalid_request` at the authorize step.
+- `BROWSER_UNSUPPORTED_CLIENT_IDS` frozenset + `is_browser_unsupported(client_id)`
+  helper. Lists client_ids whose Azure-AD app has no loopback reply URL
+  registered (`edu`, `office365`), for which any `login_via_browser`
+  attempt would fail at the authorize step. Callers should fall back
+  to device-code.
+
+### Notes
+
+- Probed every entry in `KNOWN_CLIENT_IDS` against the v1 and v2
+  authorize endpoints with `{127.0.0.1,localhost}:*` × `{/, /callback,
+  /login}` to derive these mappings.
+- `bedrock-win32` (`0000000040159362`) appears retired upstream — even
+  the OOB redirect now returns `invalid_request`. No client-side fix
+  possible; document only.
+
 ## [0.7.2] - 2026-05-17
 
 ### Added

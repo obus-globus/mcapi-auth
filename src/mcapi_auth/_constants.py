@@ -140,10 +140,25 @@ def resolve_client_id(name_or_id: str) -> str:
 # Values intentionally omit the port so the local listener can still pick
 # a free one; the Azure app must accept ``http://{host}:*{path}``.
 KNOWN_CLIENT_REDIRECTS: Final[dict[str, tuple[str, str]]] = {
+    # PrismLauncher's Azure app registers ``http://127.0.0.1`` with the
+    # *root* path. Any port is accepted (RFC 8252 loopback), but
+    # ``/callback``/``/login``/etc. are rejected as redirect_uri_invalid.
+    PRISM_LAUNCHER_CLIENT_ID: ("127.0.0.1", "/"),
     # LiquidLauncher / in-game LiquidBounce both register
     # http://localhost:*/login as the reply URL on their Azure app.
     LIQUIDLAUNCHER_CLIENT_ID: ("localhost", "/login"),
 }
+
+
+# Client_ids that are known NOT to support the loopback browser flow at
+# all — their Azure app registrations have no ``http://localhost`` /
+# ``http://127.0.0.1`` reply URL, so any ``login_via_browser`` attempt
+# will fail at the authorize step. For these, use ``--flow device-code``
+# (or, for v1 client_ids, the OOB ``login_via_browser_v1`` paste flow).
+BROWSER_UNSUPPORTED_CLIENT_IDS: Final[frozenset[str]] = frozenset({
+    EDU_CLIENT_ID,
+    OFFICE365_API_EDITOR_CLIENT_ID,
+})
 
 
 def resolve_browser_redirect(client_id: str) -> tuple[str, str] | None:
@@ -155,6 +170,16 @@ def resolve_browser_redirect(client_id: str) -> tuple[str, str] | None:
     ``/callback``).
     """
     return KNOWN_CLIENT_REDIRECTS.get(client_id)
+
+
+def is_browser_unsupported(client_id: str) -> bool:
+    """Return ``True`` if ``client_id`` has no loopback reply URL registered.
+
+    Browser flow attempts for these client_ids will fail with
+    ``invalid_request: ... redirect_uri ... not valid`` regardless of
+    host or path; use device-code (or OOB for v1) instead.
+    """
+    return client_id in BROWSER_UNSUPPORTED_CLIENT_IDS
 
 
 # SISU (Xbox Sign-In/Sign-Up). Returns XBL/XSTS tokens directly given
@@ -216,6 +241,7 @@ __all__ = [
     "BEDROCK_PLAYSTATION_CLIENT_ID",
     "BEDROCK_WIN32_CLIENT_ID",
     "BLOCKED_SERVERS_URL",
+    "BROWSER_UNSUPPORTED_CLIENT_IDS",
     "BULK_USERNAME_LOOKUP_MAX",
     "BULK_USERNAME_TO_UUID_URL",
     "DEFAULT_API_USER_AGENT",
@@ -269,6 +295,7 @@ __all__ = [
     "XERR_VERIFY_AGE_REQUIRED",
     "XSTS_AUTH_URL",
     "XSTS_RELYING_PARTY",
+    "is_browser_unsupported",
     "is_v1_client_id",
     "resolve_browser_redirect",
     "resolve_client_id",
