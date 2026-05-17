@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-05-17
+
+### Fixed
+
+- ``login_via_browser_v1`` now calls ``authenticate_xbl`` with
+  ``use_d_prefix=False``. MBI_SSL tokens minted by the Live-Connect v1
+  endpoint are pre-formed RPS tickets that XBL ``/authenticate``
+  expects raw — prefixing them with ``d=`` caused a 401
+  ``XBL authenticate failed: status=401``.
+
 ## [0.6.1] - 2026-05-17
 
 ### Changed

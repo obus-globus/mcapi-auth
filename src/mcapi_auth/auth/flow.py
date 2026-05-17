@@ -302,7 +302,9 @@ async def login_via_browser_v1(
             http_client=http_client,
         )
 
-    xbl = await authenticate_xbl(msa_tokens.access_token, http_client=http_client)
+    xbl = await authenticate_xbl(
+        msa_tokens.access_token, use_d_prefix=False, http_client=http_client
+    )
     xsts = await authenticate_xsts(xbl.token, http_client=http_client)
     mc_token = await login_with_xbox(xsts.userhash, xsts.token, http_client=http_client)
     profile = await fetch_profile(mc_token.access_token, http_client=http_client)
