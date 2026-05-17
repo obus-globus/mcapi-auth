@@ -131,14 +131,29 @@ def resolve_client_id(name_or_id: str) -> str:
     return KNOWN_CLIENT_IDS.get(name_or_id.lower(), name_or_id)
 
 
-# Per-client redirect URI overrides for the v2 browser flow. Keyed by
-# the *resolved* client_id (not alias). Each entry pins the
+# Per-client redirect URI overrides for the v2 browser (loopback) flow.
+# Keyed by the *resolved* client_id (not alias). Each entry pins the
 # ``(bind_host, redirect_path)`` that the Azure app registration accepts
-# — using the wrong host or path here will fail at ``oauth20_authorize``
-# with ``invalid_request: ... redirect_uri ... not valid``.
+# — using the wrong host or path will fail at ``oauth20_authorize`` with
+# ``invalid_request: ... redirect_uri ... not valid``.
 #
 # Values intentionally omit the port so the local listener can still pick
 # a free one; the Azure app must accept ``http://{host}:*{path}``.
+#
+# Findings — derived from probing every entry in ``KNOWN_CLIENT_IDS``
+# against ``login.live.com/oauth20_authorize.srf`` (v1) and
+# ``login.microsoftonline.com/consumers/oauth2/v2.0/authorize`` (v2)
+# with ``{127.0.0.1,localhost}:*`` x ``{/, /callback, /login, ...}``:
+#
+# * v1 / Live-Connect client_ids (java, all bedrock-*, xbox-app-ios,
+#   xbox-gamepass-ios) NEVER accept loopback redirects. Their Azure app
+#   registrations only include the OOB redirect
+#   (``https://login.live.com/oauth20_desktop.srf``). Use
+#   :func:`mcapi_auth.auth.flow.login_via_browser_v1` (paste-back) for
+#   these — :func:`login_via_browser` doesn't apply.
+# * Only two v2 client_ids in the catalog have a loopback URL registered
+#   at all — prism and liquidlauncher (below). Both ``edu`` and
+#   ``office365`` are registered for non-loopback (web app) URIs only.
 KNOWN_CLIENT_REDIRECTS: Final[dict[str, tuple[str, str]]] = {
     # PrismLauncher's Azure app registers ``http://127.0.0.1`` with the
     # *root* path. Any port is accepted (RFC 8252 loopback), but
@@ -150,14 +165,35 @@ KNOWN_CLIENT_REDIRECTS: Final[dict[str, tuple[str, str]]] = {
 }
 
 
-# Client_ids that are known NOT to support the loopback browser flow at
-# all — their Azure app registrations have no ``http://localhost`` /
-# ``http://127.0.0.1`` reply URL, so any ``login_via_browser`` attempt
-# will fail at the authorize step. For these, use ``--flow device-code``
-# (or, for v1 client_ids, the OOB ``login_via_browser_v1`` paste flow).
+# Client_ids for which :func:`mcapi_auth.auth.flow.login_via_browser`
+# (PKCE + loopback against the v2 consumers endpoint) cannot succeed.
+# Includes:
+#
+# 1. v1 / Live-Connect client_ids: the v2 endpoint rejects these as
+#    ``AADSTS70001 (client_not_found)``. Their browser flow IS
+#    :func:`login_via_browser_v1` (OOB paste-back), which is auto-routed
+#    by liquidchat-style CLIs when ``is_v1_client_id`` returns True.
+# 2. v2 client_ids whose Azure app has no loopback URL registered
+#    (``edu``, ``office365``). These need device-code flow.
+#
+# In both cases the right escape hatch for a CLI is to fall back to
+# device-code, OR (for v1) the OOB browser flow. The set is *queried*
+# inside the loopback branch of a dispatcher; v1 client_ids only reach
+# that branch under ``--force-flow``, so the warning is meaningful.
 BROWSER_UNSUPPORTED_CLIENT_IDS: Final[frozenset[str]] = frozenset({
+    # v2 GUIDs with no loopback reply URL registered.
     EDU_CLIENT_ID,
     OFFICE365_API_EDITOR_CLIENT_ID,
+    # v1 / Live-Connect IDs — incompatible with the v2 consumers
+    # endpoint that ``login_via_browser`` targets.
+    MINECRAFT_LAUNCHER_V1_CLIENT_ID,
+    BEDROCK_WIN32_CLIENT_ID,
+    BEDROCK_ANDROID_CLIENT_ID,
+    BEDROCK_IOS_CLIENT_ID,
+    BEDROCK_NINTENDO_CLIENT_ID,
+    BEDROCK_PLAYSTATION_CLIENT_ID,
+    XBOX_APP_IOS_CLIENT_ID,
+    XBOX_GAMEPASS_IOS_CLIENT_ID,
 })
 
 
@@ -173,11 +209,19 @@ def resolve_browser_redirect(client_id: str) -> tuple[str, str] | None:
 
 
 def is_browser_unsupported(client_id: str) -> bool:
-    """Return ``True`` if ``client_id`` has no loopback reply URL registered.
+    """Return ``True`` if loopback browser flow cannot work for ``client_id``.
 
-    Browser flow attempts for these client_ids will fail with
-    ``invalid_request: ... redirect_uri ... not valid`` regardless of
-    host or path; use device-code (or OOB for v1) instead.
+    The loopback browser flow (:func:`login_via_browser`) targets the
+    v2 ``consumers/oauth2/v2.0`` endpoint with PKCE and a local listener.
+    This returns ``True`` if either:
+
+    * ``client_id`` is a v1 / Live-Connect ID (which the v2 endpoint
+      rejects as ``AADSTS70001``), or
+    * ``client_id`` is a v2 ID whose Azure app has no loopback URL
+      registered (e.g. ``edu``, ``office365``).
+
+    For v1 IDs the proper replacement is :func:`login_via_browser_v1`
+    (OOB paste-back). For browser-unsupported v2 IDs, use device-code.
     """
     return client_id in BROWSER_UNSUPPORTED_CLIENT_IDS
 

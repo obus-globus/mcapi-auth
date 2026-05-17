@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.4] - 2026-05-17
+
+### Changed
+
+- ``BROWSER_UNSUPPORTED_CLIENT_IDS`` now also includes every v1 /
+  Live-Connect client_id in the catalog (``java``, ``bedrock-*``,
+  ``xbox-app-ios``, ``xbox-gamepass-ios``). Correction to 0.7.3:
+  previously this set listed only the two v2 GUIDs without a registered
+  loopback URL (``edu``, ``office365``). v1 IDs are also incompatible
+  with :func:`mcapi_auth.auth.flow.login_via_browser` (which targets
+  the v2 ``consumers`` endpoint and rejects v1 client_ids as
+  ``AADSTS70001``).
+- Expanded docstrings on ``KNOWN_CLIENT_REDIRECTS``,
+  ``BROWSER_UNSUPPORTED_CLIENT_IDS``, and ``is_browser_unsupported``
+  to record the redirect-URI matrix derived from probing every entry
+  in ``KNOWN_CLIENT_IDS``.
+
+### Notes
+
+- End-to-end probe via the ``liquidchat-loopback-probe`` tool
+  confirmed that no v1 client_id in the catalog accepts any loopback
+  redirect — earlier probe results that classified
+  ``bedrock-playstation``, ``xbox-app-ios``, and ``xbox-gamepass-ios``
+  as accepting localhost were false positives from a title-based
+  classifier; the actual error renders in the response body via JS.
+
 ## [0.7.3] - 2026-05-17
 
 ### Added
