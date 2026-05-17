@@ -458,7 +458,7 @@ def _raise_for_status(response: httpx.Response) -> None:
 def _validate[M: McModel](response: httpx.Response, model: type[M]) -> M:
     try:
         return model.model_validate(response.json())
-    except (ValidationError, ValueError) as e:
+    except ValidationError as e:
         raise HttpError(
             response.status_code,
             response.text,

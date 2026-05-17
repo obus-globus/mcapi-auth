@@ -521,10 +521,10 @@ class AuthChain:
         # same account). If callers want a fresh one they can call
         # refresh_profile().
 
-    async def _bump_xbl_expiry(self, _old: XboxLiveToken | None, _new: XboxLiveToken) -> None:
+    def _bump_xbl_expiry(self, _old: XboxLiveToken | None, _new: XboxLiveToken) -> None:
         self._xbl_expires_at = Instant.now().add(seconds=14 * 3600)
 
-    async def _bump_xsts_expiry(self, _old: XSTSToken | None, _new: XSTSToken) -> None:
+    def _bump_xsts_expiry(self, _old: XSTSToken | None, _new: XSTSToken) -> None:
         self._xsts_expires_at = Instant.now().add(seconds=14 * 3600)
 
     async def _dispatch(self, stage: str, old: Any, new: Any) -> None:

@@ -156,7 +156,7 @@ async def fetch_player_certificates(
         )
     try:
         return MinecraftPlayerCertificates.model_validate(response.json())
-    except (ValidationError, ValueError) as e:
+    except ValidationError as e:
         raise HttpError(
             response.status_code,
             response.text,

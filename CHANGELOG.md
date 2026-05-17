@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.3] - 2026-05-17
+
+### Changed
+
+- SonarQube cleanup of new-in-0.8.0+ code: drop redundant
+  ``ValueError`` from ``except (ValidationError, ValueError)`` in
+  ``realms.py`` and ``player_certificates.py`` (Pydantic's
+  ``ValidationError`` already extends ``ValueError``). Convert
+  ``_bump_xbl_expiry`` / ``_bump_xsts_expiry`` from ``async def`` to
+  plain ``def`` since they perform no awaits — the ``Holder`` listener
+  interface accepts both shapes.
+
 ## [0.8.2] - 2026-05-17
 
 ### Fixed
