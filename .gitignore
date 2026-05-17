@@ -16,3 +16,4 @@ htmlcov/
 node_modules/
 .scannerwork/
 sonar-project.properties
+coverage.xml
