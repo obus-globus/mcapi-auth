@@ -81,6 +81,15 @@ XBOX_GAMEPASS_IOS_CLIENT_ID: Final = "000000004c20a908"
 EDU_CLIENT_ID: Final = "b36b1432-1a1c-4c82-9b76-24de1cab42f2"
 OFFICE365_API_EDITOR_CLIENT_ID: Final = "389b1b32-b5d5-43b2-bddc-84ce938d6737"
 
+# LiquidLauncher / LiquidBounce's shared Azure-AD app. LiquidLauncher's
+# ``src-tauri/src/minecraft/auth.rs`` and LiquidBounce's ``mc-authlib``
+# ``MicrosoftAccount$AuthMethod.LIQUIDBOUNCE`` both use this client_id
+# with the ``XboxLive.signin offline_access`` scope. LB also supports
+# ``MINECRAFT_PC`` (== :data:`MINECRAFT_LAUNCHER_V1_CLIENT_ID`) and
+# ``MINECRAFT_NINTENDO_SWITCH`` (== :data:`BEDROCK_NINTENDO_CLIENT_ID`)
+# as alternative MBI_SSL v1 auth methods.
+LIQUIDLAUNCHER_CLIENT_ID: Final = "0add8caf-2cc6-4546-b798-c3d171217dd9"
+
 # Mapping of friendly aliases → client_id strings, for use by CLIs and
 # config files. Use :func:`is_v1_client_id` to decide which auth flow
 # (v1 OOB / v2 PKCE) to dispatch.
@@ -89,6 +98,8 @@ KNOWN_CLIENT_IDS: Final[dict[str, str]] = {
     "prism": PRISM_LAUNCHER_CLIENT_ID,
     "edu": EDU_CLIENT_ID,
     "office365": OFFICE365_API_EDITOR_CLIENT_ID,
+    "liquidlauncher": LIQUIDLAUNCHER_CLIENT_ID,
+    "liquidbounce": LIQUIDLAUNCHER_CLIENT_ID,
     "bedrock-win32": BEDROCK_WIN32_CLIENT_ID,
     "bedrock-android": BEDROCK_ANDROID_CLIENT_ID,
     "bedrock-ios": BEDROCK_IOS_CLIENT_ID,
@@ -186,6 +197,7 @@ __all__ = [
     "DEFAULT_USER_AGENT",
     "EDU_CLIENT_ID",
     "KNOWN_CLIENT_IDS",
+    "LIQUIDLAUNCHER_CLIENT_ID",
     "LIVE_CONNECT_AUTHORIZE_URL",
     "LIVE_CONNECT_DESKTOP_REDIRECT_URI",
     "LIVE_CONNECT_SCOPE_MBI_SSL",

@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-05-17
+
+### Added
+
+- ``LIQUIDLAUNCHER_CLIENT_ID`` constant
+  (``0add8caf-2cc6-4546-b798-c3d171217dd9``) — the v2 Azure-AD app shared
+  by LiquidLauncher (``src-tauri/src/minecraft/auth.rs``) and LiquidBounce
+  (``mc-authlib``'s ``MicrosoftAccount$AuthMethod.LIQUIDBOUNCE``). Exposed
+  through ``KNOWN_CLIENT_IDS`` as both ``liquidlauncher`` and
+  ``liquidbounce`` (they're the same client_id).
+
 ## [0.7.0] - 2026-05-17
 
 ### Added
