@@ -1,6 +1,6 @@
 [project]
 name = "mcapi-auth"
-version = "0.3.0"
+version = "0.4.0"
 description = "Async Python client for Microsoft → Minecraft authentication and the Mojang REST APIs (typed, httpx-based)"
 readme = "README.md"
 license = { text = "MIT" }
