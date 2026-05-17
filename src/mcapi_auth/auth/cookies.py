@@ -281,7 +281,7 @@ async def login_with_cookies_msa_v1(
                 "code_verifier": pkce.verifier,
             },
             headers={
-                "Content-Type": "application/x-www-form-urlencoded",
+                "Content-Type": _FORM_URLENCODED,
                 "User-Agent": user_agent,
             },
             follow_redirects=False,
@@ -515,6 +515,9 @@ def _code_from_redirect(location: str) -> str | None:
     return values[0] if values and values[0] else None
 
 
+_FORM_URLENCODED = "application/x-www-form-urlencoded"
+
+
 _SERVER_DATA_RE = re.compile(r"var ServerData\s*=\s*({.*?});\s*</script>", re.DOTALL)
 _CONSENT_SERVER_DATA_RE = re.compile(r"ServerData\s*=\s*(\{.+?\});", re.DOTALL)
 _FORM_ACTION_RE = re.compile(r'action="([^"]+)"')
@@ -633,7 +636,7 @@ async def _handle_prism_interstitial(
             data=form_data,
             headers={
                 "User-Agent": user_agent,
-                "Content-Type": "application/x-www-form-urlencoded",
+                "Content-Type": _FORM_URLENCODED,
             },
             follow_redirects=False,
         )
@@ -654,7 +657,7 @@ async def _handle_prism_interstitial(
         data=form_data,
         headers={
             "User-Agent": user_agent,
-            "Content-Type": "application/x-www-form-urlencoded",
+            "Content-Type": _FORM_URLENCODED,
         },
         follow_redirects=False,
     )
@@ -684,7 +687,7 @@ async def _handle_prism_interstitial(
         data=consent_form,
         headers={
             "User-Agent": user_agent,
-            "Content-Type": "application/x-www-form-urlencoded",
+            "Content-Type": _FORM_URLENCODED,
             "Referer": consent_page_url,
         },
         follow_redirects=False,
@@ -730,7 +733,7 @@ async def _exchange_prism_code(
             "scope": scope,
         },
         headers={
-            "Content-Type": "application/x-www-form-urlencoded",
+            "Content-Type": _FORM_URLENCODED,
             "User-Agent": user_agent,
         },
         follow_redirects=False,
