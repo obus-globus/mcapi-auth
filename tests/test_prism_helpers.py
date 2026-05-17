@@ -130,3 +130,100 @@ class TestBuildTileParams:
 
     def test_returns_none_without_opid(self) -> None:
         assert _build_tile_params("contextid=AAA1", session_id="s", client_id="c") is None
+
+
+import httpx
+import pytest
+import respx
+
+from mcapi_auth._constants import LIVE_CONNECT_AUTHORIZE_URL
+from mcapi_auth.auth.cookies import _handle_prism_html_flow
+
+
+_VALID_PRISM_HTML = (
+    '<script>var ServerData = '
+    '{"arrSessions":[{"id":"sess-1","isSignedIn":true}]};</script>'
+    "contextid=AAA1&opid=BBB2&bk=1700000000&uaid=cafe"
+)
+
+
+class TestHandlePrismHtmlFlow:
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_returns_code_from_302_redirect(self) -> None:
+        respx.get(LIVE_CONNECT_AUTHORIZE_URL).mock(
+            return_value=httpx.Response(
+                302, headers={"location": "https://login.live.com/oauth20_desktop.srf?code=M.R3_BAY.abc"}
+            )
+        )
+        async with httpx.AsyncClient() as client:
+            code = await _handle_prism_html_flow(
+                client,
+                html=_VALID_PRISM_HTML,
+                referer="https://login.live.com/",
+                client_id="000000004C12AE6F",
+                user_agent="ua",
+            )
+        assert code == "M.R3_BAY.abc"
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_returns_none_when_redirect_has_no_code(self) -> None:
+        respx.get(LIVE_CONNECT_AUTHORIZE_URL).mock(
+            return_value=httpx.Response(302, headers={"location": "https://example.invalid/"})
+        )
+        async with httpx.AsyncClient() as client:
+            code = await _handle_prism_html_flow(
+                client,
+                html=_VALID_PRISM_HTML,
+                referer="https://login.live.com/",
+                client_id="000000004C12AE6F",
+                user_agent="ua",
+            )
+        assert code is None
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_returns_none_on_unknown_interstitial(self) -> None:
+        respx.get(LIVE_CONNECT_AUTHORIZE_URL).mock(
+            return_value=httpx.Response(200, text="<html>no form here</html>")
+        )
+        async with httpx.AsyncClient() as client:
+            code = await _handle_prism_html_flow(
+                client,
+                html=_VALID_PRISM_HTML,
+                referer="https://login.live.com/",
+                client_id="000000004C12AE6F",
+                user_agent="ua",
+            )
+        assert code is None
+
+    @pytest.mark.asyncio
+    async def test_returns_none_without_server_data(self) -> None:
+        async with httpx.AsyncClient() as client:
+            code = await _handle_prism_html_flow(
+                client,
+                html="<html>no server data</html>",
+                referer="r",
+                client_id="cid",
+                user_agent="ua",
+            )
+        assert code is None
+
+    @pytest.mark.asyncio
+    async def test_returns_none_without_session(self) -> None:
+        html = '<script>var ServerData = {"arrSessions": []};</script>'
+        async with httpx.AsyncClient() as client:
+            code = await _handle_prism_html_flow(
+                client, html=html, referer="r", client_id="cid", user_agent="ua"
+            )
+        assert code is None
+
+    @pytest.mark.asyncio
+    async def test_returns_none_without_tile_params(self) -> None:
+        html = '<script>var ServerData = {"arrSessions":[{"id":"s","isSignedIn":true}]};</script>'
+        async with httpx.AsyncClient() as client:
+            code = await _handle_prism_html_flow(
+                client, html=html, referer="r", client_id="cid", user_agent="ua"
+            )
+        assert code is None
