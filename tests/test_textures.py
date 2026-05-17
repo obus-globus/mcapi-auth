@@ -1,7 +1,5 @@
 """Tests for the texture-property decoder."""
 
-from __future__ import annotations
-
 import base64
 import json
 

@@ -1,7 +1,5 @@
 """Minimal example: log in, print the resulting profile."""
 
-from __future__ import annotations
-
 import asyncio
 
 from mcapi_auth import DeviceCodePrompt, login

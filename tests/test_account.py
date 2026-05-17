@@ -1,7 +1,5 @@
 """Tests for authenticated profile/skin/cape/name endpoints."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 
 import pytest

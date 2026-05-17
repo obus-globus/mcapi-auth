@@ -1,5 +1,4 @@
 """Mojang sessionserver ``joinServer`` call.
-
 When a Minecraft client connects to an online-mode server, the server
 hands it a SHA-1 "server ID hash" and the client must POST it to
 ``sessionserver.mojang.com/session/minecraft/join`` to prove account
@@ -9,7 +8,6 @@ Third-party services (axochat, custom auth gateways, etc.) reuse the
 same dance, which is why this primitive belongs in an auth library.
 """
 
-from __future__ import annotations
 
 from dataclasses import dataclass
 

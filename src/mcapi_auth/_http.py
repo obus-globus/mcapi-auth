@@ -1,5 +1,4 @@
 """Shared HTTP-client plumbing.
-
 Every public function in :mod:`mcapi_auth` accepts an optional
 ``http_client: httpx.AsyncClient`` so callers can plug in custom
 timeouts, proxies, transport mocks, retry transports (``httpx-retries``),
@@ -11,7 +10,6 @@ caller's client if they passed one (and does NOT close it), otherwise it
 creates and closes one for them.
 """
 
-from __future__ import annotations
 
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager

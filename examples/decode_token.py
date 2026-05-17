@@ -1,5 +1,4 @@
 """Decode a Minecraft access token offline (no network call).
-
 The MC token is a JWT. The `pfd` claim embeds the player's UUID and
 username, and `exp` tells you when it expires. Useful for:
 
@@ -9,7 +8,6 @@ username, and `exp` tells you when it expires. Useful for:
   other component (e.g. a launcher bridge).
 """
 
-from __future__ import annotations
 
 import sys
 

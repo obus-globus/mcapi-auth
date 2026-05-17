@@ -1,5 +1,4 @@
 """Cookie-based MSA auth flows (browser-session impersonation).
-
 The three flows in this module trade *Microsoft session cookies*
 (usually obtained out-of-band by automating a real browser sign-in,
 e.g. via :mod:`nodriver` / Selenium / Playwright) for launcher-style
@@ -37,7 +36,6 @@ the helpers convert.
    credential theft.
 """
 
-from __future__ import annotations
 
 import base64
 import html as html_mod
@@ -68,7 +66,7 @@ from .._constants import (
     SISU_DEFAULT_TID,
 )
 from .._http import parse_json_object_auth
-from ..exceptions import MCAuthError, MSAFlowError
+from ..exceptions import McAuthError, MSAFlowError
 from .auth_code import create_pkce_challenge
 from .msa import MSATokens, _parse_token_response  # pyright: ignore[reportPrivateUsage]
 from .xbox import XboxLiveToken
@@ -528,7 +526,67 @@ _BK_RE = re.compile(r"bk[=:](\d+)")
 _UAID_RE = re.compile(r"uaid[=:]([a-f0-9]+)", re.IGNORECASE)
 
 
-async def _handle_prism_html_flow(  # NOSONAR linear protocol stages; splitting hurts readability
+def _extract_server_data(html: str) -> dict[str, Any] | None:
+    """Parse the ``var ServerData = {...};`` blob into a dict, or return None."""
+    sd_match = _SERVER_DATA_RE.search(html)
+    if not sd_match:
+        return None
+    try:
+        parsed_sd: object = json.loads(sd_match.group(1))
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(parsed_sd, dict):
+        return None
+    return cast(dict[str, Any], parsed_sd)
+
+
+def _pick_session_id(server_data: dict[str, Any]) -> str | None:
+    """Prefer a signed-in session; fall back to the first session."""
+    sessions_raw = server_data.get("arrSessions")
+    if not isinstance(sessions_raw, list) or not sessions_raw:
+        return None
+    sessions = cast(list[object], sessions_raw)
+    for s in sessions:
+        if isinstance(s, dict):
+            s_typed = cast(dict[str, Any], s)
+            if s_typed.get("isSignedIn"):
+                candidate = s_typed.get("id")
+                if isinstance(candidate, str) and candidate:
+                    return candidate
+    first = sessions[0]
+    if isinstance(first, dict):
+        candidate = cast(dict[str, Any], first).get("id")
+        if isinstance(candidate, str) and candidate:
+            return candidate
+    return None
+
+
+def _build_tile_params(
+    html: str, *, session_id: str, client_id: str
+) -> dict[str, str] | None:
+    """Pull contextid / opid / bk / uaid from the page and assemble the tile URL params."""
+    ctx_match = _CTX_RE.search(html)
+    opid_match = _OPID_RE.search(html)
+    if not ctx_match or not opid_match:
+        return None
+    params: dict[str, str] = {
+        "client_id": client_id,
+        "contextid": ctx_match.group(1),
+        "opid": opid_match.group(1),
+        "sessionid": session_id,
+        "mkt": "EN-US",
+        "lc": "1033",
+    }
+    bk_match = _BK_RE.search(html)
+    if bk_match:
+        params["bk"] = bk_match.group(1)
+    uaid_match = _UAID_RE.search(html)
+    if uaid_match:
+        params["uaid"] = uaid_match.group(1)
+    return params
+
+
+async def _handle_prism_html_flow(
     client: httpx.AsyncClient,
     *,
     html: str,
@@ -542,58 +600,15 @@ async def _handle_prism_html_flow(  # NOSONAR linear protocol stages; splitting 
     the auth code on success, or ``None`` if Microsoft showed us a
     page we don't know how to advance.
     """
-    sd_match = _SERVER_DATA_RE.search(html)
-    if not sd_match:
+    server_data = _extract_server_data(html)
+    if server_data is None:
         return None
-    try:
-        parsed_sd: object = json.loads(sd_match.group(1))
-    except json.JSONDecodeError:
-        return None
-    if not isinstance(parsed_sd, dict):
-        return None
-    server_data = cast(dict[str, Any], parsed_sd)
-
-    sessions_raw = server_data.get("arrSessions")
-    if not isinstance(sessions_raw, list) or not sessions_raw:
-        return None
-    sessions = cast(list[object], sessions_raw)
-    session_id: str | None = None
-    for s in sessions:
-        if isinstance(s, dict):
-            s_typed = cast(dict[str, Any], s)
-            if s_typed.get("isSignedIn"):
-                candidate = s_typed.get("id")
-                if isinstance(candidate, str) and candidate:
-                    session_id = candidate
-                    break
+    session_id = _pick_session_id(server_data)
     if session_id is None:
-        first = sessions[0]
-        if isinstance(first, dict):
-            candidate = cast(dict[str, Any], first).get("id")
-            if isinstance(candidate, str):
-                session_id = candidate
-    if not session_id:
         return None
-
-    ctx_match = _CTX_RE.search(html)
-    opid_match = _OPID_RE.search(html)
-    if not ctx_match or not opid_match:
+    tile_params = _build_tile_params(html, session_id=session_id, client_id=client_id)
+    if tile_params is None:
         return None
-    bk_match = _BK_RE.search(html)
-    uaid_match = _UAID_RE.search(html)
-
-    tile_params = {
-        "client_id": client_id,
-        "contextid": ctx_match.group(1),
-        "opid": opid_match.group(1),
-        "sessionid": session_id,
-        "mkt": "EN-US",
-        "lc": "1033",
-    }
-    if bk_match:
-        tile_params["bk"] = bk_match.group(1)
-    if uaid_match:
-        tile_params["uaid"] = uaid_match.group(1)
 
     tile_url = f"{LIVE_CONNECT_AUTHORIZE_URL}?{urlencode(tile_params)}"
     resp = await client.get(
@@ -742,6 +757,6 @@ async def _exchange_prism_code(
         return _parse_token_response(resp)
     try:
         data = parse_json_object_auth(resp)
-    except MCAuthError:
+    except McAuthError:
         data = {"raw": resp.text}
     raise CookieAuthError(f"Prism token exchange failed: status={resp.status_code} body={data!r}")

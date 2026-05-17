@@ -1,12 +1,10 @@
 """Minecraft entitlements (``/entitlements/mcstore``).
-
 Distinguishes "owns Minecraft: Java Edition" from "owns Bedrock only"
 from "Game Pass". Mojang's ``/minecraft/profile`` 404s for any
 account without Java, but it doesn't tell you *why* — entitlements
 do.
 """
 
-from __future__ import annotations
 
 from typing import Any, cast
 

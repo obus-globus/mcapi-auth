@@ -1,5 +1,4 @@
 """Adapter for the ``token: str | MinecraftSession`` parameter style.
-
 Authed endpoints accept either a raw Minecraft access-token string OR any
 object that exposes an ``access_token`` attribute — which is precisely the
 shape of :class:`mcapi_auth.MinecraftSession`.
@@ -9,7 +8,6 @@ you can plug in any session-like object (a custom dataclass, a Pydantic
 model, …) as long as it carries the token in the same attribute name.
 """
 
-from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 

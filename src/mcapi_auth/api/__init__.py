@@ -1,12 +1,10 @@
 """REST API surface: public lookups + authed profile/skin/cape/name ops.
-
 The :mod:`mcapi_auth.api` subpackage owns everything related to *using*
 a Minecraft access token (and the public lookup endpoints that don't
 need one). Top-level convenience names are also re-exported from the
 :mod:`mcapi_auth` namespace.
 """
 
-from __future__ import annotations
 
 from .._constants import (
     DEFAULT_API_USER_AGENT,

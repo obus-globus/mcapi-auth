@@ -1,5 +1,4 @@
 """Plug a custom `TokenStorage` into `mcapi_auth.login()`.
-
 `FileTokenStorage` (XDG state dir, atomic write, 0600 perms) is fine for
 single-user desktop apps. For services, you'll want to put refresh
 tokens somewhere else — your DB, a secrets manager, an in-memory cache
@@ -10,7 +9,6 @@ SQLite-backed one. The protocol is just two async methods: `load()`
 returning `str | None`, and `save(refresh_token)` returning `None`.
 """
 
-from __future__ import annotations
 
 import asyncio
 import sqlite3

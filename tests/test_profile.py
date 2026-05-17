@@ -1,7 +1,5 @@
 """Tests for the public profile / UUID endpoints."""
 
-from __future__ import annotations
-
 import httpx
 import pytest
 import respx

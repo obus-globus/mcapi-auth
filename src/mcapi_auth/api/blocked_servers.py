@@ -1,5 +1,4 @@
 """Mojang's SHA1 server blocklist.
-
 The endpoint at ``sessionserver.mojang.com/blockedservers`` returns a
 newline-separated list of SHA1 hashes. Each hash is computed over the
 lowercase server hostname (or IP) encoded as ISO-8859-1, with wildcards
@@ -27,7 +26,6 @@ This module provides:
   given host would be refused by the vanilla client.
 """
 
-from __future__ import annotations
 
 import hashlib
 from collections.abc import Iterable

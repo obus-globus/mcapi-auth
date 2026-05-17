@@ -1,7 +1,5 @@
 """Tests for piston-meta version manifest + per-version JSON parsing."""
 
-from __future__ import annotations
-
 import pytest
 import respx
 

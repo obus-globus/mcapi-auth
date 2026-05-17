@@ -1,5 +1,4 @@
 """Shared Pydantic plumbing.
-
 Defines :class:`McModel`, the frozen base every response model in mcapi_auth
 inherits from, plus :data:`InstantField` for whenever-typed timestamps.
 
@@ -13,15 +12,14 @@ in a model validator, the dunder ``__init__`` keeps its natural Python
 field names while we still parse Mojang's camelCase wire format.
 """
 
-from __future__ import annotations
 
 from typing import Annotated, Any, ClassVar
 
-from pydantic import BaseModel, BeforeValidator, ConfigDict, PlainSerializer, model_validator
+from pydantic import BaseModel, ConfigDict, PlainSerializer, PlainValidator, model_validator
 from whenever import Instant
 
 
-def _coerce_instant(v: Any) -> Any:
+def _coerce_instant(v: Any) -> Instant:
     if isinstance(v, Instant):
         return v
     if isinstance(v, str):
@@ -31,7 +29,7 @@ def _coerce_instant(v: Any) -> Any:
 
 InstantField = Annotated[
     Instant,
-    BeforeValidator(_coerce_instant),
+    PlainValidator(_coerce_instant),
     PlainSerializer(lambda i: i.format_iso(), return_type=str, when_used="json"),
 ]
 

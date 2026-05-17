@@ -9,15 +9,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed (breaking)
 
-- **Removed `timeout=` kwargs** from `acquire_msa_via_browser`,
-  `login_via_browser`, `login_with_cookies_msa_v1`,
-  `login_with_cookies_sisu`, and `login_with_cookies_prism`. Callers
-  that need a bounded wait should wrap the call with
+- **Bumped minimum Python to 3.14** (PEP 749 — lazy annotations are
+  the default, so ``from __future__ import annotations`` was dropped
+  from every module).
+- **Removed the ``MCAuthError`` back-compat alias.** Use ``McAuthError``
+  directly.
+- **Refresh-token storage path moved.** ``FileTokenStorage`` now uses
+  ``$XDG_STATE_HOME/mcapi_auth/refresh_token.json`` (previously
+  ``mcauth/...``). Migrate stored tokens by moving the file.
+- **Renamed ``mcapi_auth.auth._flow`` → ``mcapi_auth.auth.flow``.** It
+  was private-by-name but exports the headline ``login`` /
+  ``login_via_browser`` functions; the public re-exports at
+  ``mcapi_auth.{login, login_via_browser}`` are unchanged.
+- **Removed ``timeout=`` kwargs** from ``acquire_msa_via_browser``,
+  ``login_via_browser``, ``login_with_cookies_msa_v1``,
+  ``login_with_cookies_sisu``, and ``login_with_cookies_prism``.
+  Callers that need a bounded wait should wrap the call with
   ``async with asyncio.timeout(N):`` (and catch the plain
-  :class:`TimeoutError` instead of the previously-internal
+  ``TimeoutError`` instead of the previously-internal
   ``_CallbackTimeoutError``). HTTP-level timeouts on the default
   internal ``httpx.AsyncClient`` are fixed to ``DEFAULT_HTTP_TIMEOUT``;
   pass your own ``http_client=`` to override.
+- **``success_html`` is now ``str``** (was ``bytes``) on
+  ``acquire_msa_via_browser``. Encoded to UTF-8 internally.
+
+### Changed
+
+- **Callbacks can be sync or async.** ``DeviceCodeCallback`` is now
+  ``Callable[[DeviceCodePrompt], None | Awaitable[None]]`` and
+  ``open_browser`` is ``Callable[[str], None | Awaitable[None]]``.
+  Pass a coroutine function and it's awaited; pass a plain function
+  and it's invoked directly.
+
+### Added
+
+- ``MinecraftSession.dump()`` and ``MinecraftSession.load()`` for
+  full-session JSON round-tripping. Lets callers cache the whole
+  session (including the Minecraft access token) and skip the entire
+  MSA→XBL→XSTS→MC chain on cold start while the access token is still
+  valid.
+- MkDocs Material + mkdocstrings docs scaffold under ``docs/``,
+  buildable with ``uv run --group docs mkdocs serve``.
+
+### Fixed
+
+- ``InstantField`` now uses ``PlainValidator`` instead of
+  ``BeforeValidator``, fixing ``model_validate_json`` on models that
+  contain instant fields (the previous combination silently rejected
+  any deserialised JSON containing instants).
+- ``_handle_prism_html_flow`` split into smaller helpers
+  (``_extract_server_data``, ``_pick_session_id``,
+  ``_build_tile_params``) — same behaviour, half the cognitive
+  complexity.
 
 ## [0.3.0] — Merged `mcauth` + `mcapi` into `mcapi-auth`
 

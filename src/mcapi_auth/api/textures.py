@@ -1,5 +1,4 @@
 """Decode the base64-encoded ``textures`` property attached to public profiles.
-
 The session-server ``properties[textures].value`` is a base64 string. Decoded,
 it's a small JSON document::
 
@@ -19,7 +18,6 @@ rewrite the scheme themselves; the texture host (``textures.minecraft.net``)
 does support TLS.
 """
 
-from __future__ import annotations
 
 import base64
 import json

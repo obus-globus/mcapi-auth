@@ -1,7 +1,5 @@
 """End-to-end flow test using respx + an in-memory storage backend."""
 
-from __future__ import annotations
-
 import pytest
 import respx
 

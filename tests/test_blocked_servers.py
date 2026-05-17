@@ -1,7 +1,5 @@
 """Tests for the blocked-servers helpers."""
 
-from __future__ import annotations
-
 import hashlib
 
 import respx

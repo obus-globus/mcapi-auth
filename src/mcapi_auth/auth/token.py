@@ -1,5 +1,4 @@
 """Minecraft access-token (JWT) inspection.
-
 The Minecraft ``access_token`` returned by ``login_with_xbox`` is a
 JWS-signed JWT. Mojang's public key is not exposed, so signature
 verification isn't useful for us — but the payload claims are still
@@ -12,7 +11,6 @@ JWT is decoded manually (base64url + JSON) so :mod:`mcapi_auth` stays a
 single-runtime-dep package.
 """
 
-from __future__ import annotations
 
 import base64
 import binascii
@@ -22,7 +20,7 @@ from typing import Any, cast
 from whenever import Instant
 
 from .._models import InstantField, McModel
-from ..exceptions import MCAuthError
+from ..exceptions import McAuthError
 
 __all__ = ["MinecraftTokenInfo", "decode_minecraft_access_token"]
 
@@ -42,7 +40,7 @@ class MinecraftTokenInfo(McModel):
     raw_claims: dict[str, Any]
 
 
-class MinecraftTokenDecodeError(MCAuthError):
+class MinecraftTokenDecodeError(McAuthError):
     """The Minecraft access token did not decode as a JWS-style JWT."""
 
 

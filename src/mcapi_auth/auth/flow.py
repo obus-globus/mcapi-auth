@@ -1,7 +1,6 @@
 """High-level orchestration of stages 1-5."""
 
-from __future__ import annotations
-
+import inspect
 import logging
 from collections.abc import Awaitable, Callable
 
@@ -26,15 +25,16 @@ __all__ = ["DeviceCodeCallback", "login", "login_via_browser"]
 
 logger = logging.getLogger(__name__)
 
-type DeviceCodeCallback = Callable[[DeviceCodePrompt], Awaitable[None]]
-"""Coroutine invoked exactly once with the device-code prompt to display.
+type DeviceCodeCallback = Callable[[DeviceCodePrompt], None | Awaitable[None]]
+"""Sync or async callable invoked exactly once with the device-code prompt.
 
 Default implementation prints to stdout. Pass your own to integrate with
-a Discord bot, GUI, etc.
+a Discord bot, GUI, etc. If your callback is ``async``, it's awaited;
+sync callables are invoked directly.
 """
 
 
-async def _default_prompt(prompt: DeviceCodePrompt) -> None:  # NOSONAR must match async DeviceCodeCallback protocol
+def _default_prompt(prompt: DeviceCodePrompt) -> None:
     # Library code normally doesn't print, but this single user-facing
     # interaction is the whole point of device-code flow — and the
     # alternative ("silently hang") is strictly worse. Callers who care
@@ -43,6 +43,12 @@ async def _default_prompt(prompt: DeviceCodePrompt) -> None:  # NOSONAR must mat
         f"Visit {prompt.verification_uri} and enter code {prompt.user_code}"
     )
     print(message)
+
+
+async def _invoke_callback(cb: DeviceCodeCallback, prompt: DeviceCodePrompt) -> None:
+    result = cb(prompt)
+    if inspect.isawaitable(result):
+        await result
 
 
 async def login(
@@ -130,7 +136,7 @@ async def _acquire_msa_tokens(
             await storage.clear()
 
     prompt, pending = await request_device_code(client_id=client_id, http_client=http_client)
-    await prompt_cb(prompt)
+    await _invoke_callback(prompt_cb, prompt)
     return await poll_for_device_code_token(pending, client_id=client_id, http_client=http_client)
 
 
@@ -143,7 +149,7 @@ async def login_via_browser(
     redirect_path: str = "/callback",
     prompt: str | None = None,
     scope: str = MSA_SCOPE,
-    open_browser: Callable[[str], object] | None = None,
+    open_browser: Callable[[str], None | Awaitable[None]] | None = None,
     http_client: httpx.AsyncClient | None = None,
 ) -> MinecraftSession:
     """Run the full auth chain via the authorization-code (browser) flow.

@@ -1,7 +1,5 @@
 """The :class:`MinecraftSession` returned by a successful authentication."""
 
-from __future__ import annotations
-
 from pydantic import Field
 from whenever import Instant
 
@@ -69,3 +67,18 @@ class MinecraftSession(McModel):
     def minecraft_token_expired(self, *, now: Instant | None = None, leeway: float = 0.0) -> bool:
         """``True`` once the Minecraft access token has expired (minus ``leeway``)."""
         return self.minecraft_token_seconds_remaining(now=now) - leeway <= 0
+
+    def dump(self) -> str:
+        """Serialise the whole session to a JSON string.
+
+        Pair with :meth:`load` for full-session caching: skip the entire
+        MSA→XBL→XSTS→MC token chain on cold start when the Minecraft
+        access token hasn't expired yet (cheaper than even a single
+        refresh-token exchange).
+        """
+        return self.model_dump_json()
+
+    @classmethod
+    def load(cls, data: str | bytes) -> MinecraftSession:
+        """Inverse of :meth:`dump` — parse a JSON blob back into a session."""
+        return cls.model_validate_json(data)

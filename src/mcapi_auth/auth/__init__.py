@@ -1,5 +1,4 @@
 """Authentication chain: Microsoft → XBL → XSTS → Mojang.
-
 The :mod:`mcapi_auth.auth` subpackage owns everything related to
 *getting* a Minecraft access token from a Microsoft account. The public
 entry points (:func:`login`, :func:`login_via_browser`,
@@ -7,7 +6,6 @@ entry points (:func:`login`, :func:`login_via_browser`,
 :mod:`mcapi_auth` namespace for convenience.
 """
 
-from __future__ import annotations
 
 from .._constants import (
     LIVE_CONNECT_DESKTOP_REDIRECT_URI,
@@ -20,7 +18,6 @@ from ..exceptions import (
     AuthorizationDeclinedError,
     ChildAccountError,
     DeviceCodeExpiredError,
-    MCAuthError,
     McAuthError,
     MinecraftAuthError,
     MinecraftProfileNotFoundError,
@@ -33,7 +30,6 @@ from ..exceptions import (
     XSTSError,
     xerr_to_exception,
 )
-from ._flow import DeviceCodeCallback, login, login_via_browser
 from .auth_code import (
     PKCEChallenge,
     acquire_msa_via_browser,
@@ -52,6 +48,7 @@ from .cookies import (
     login_with_cookies_sisu,
 )
 from .entitlements import Entitlements, derive_entitlement_flags, fetch_entitlements
+from .flow import DeviceCodeCallback, login, login_via_browser
 from .minecraft import login_with_xbox
 from .msa import (
     DeviceCodePrompt,
@@ -82,7 +79,6 @@ __all__ = [
     "Entitlements",
     "FileTokenStorage",
     "JoinServerError",
-    "MCAuthError",
     "MSAAuthError",
     "MSAFlowError",
     "MSATokens",

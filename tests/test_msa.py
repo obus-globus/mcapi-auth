@@ -1,11 +1,9 @@
 """Tests for the MSA device-code + refresh-token flow.
-
 Uses respx to mock httpx at the transport layer.
 """
 
-from __future__ import annotations
 
-import asyncio
+import inspect
 
 import httpx
 import pytest
@@ -193,4 +191,4 @@ def test_module_imports_cleanly() -> None:
     from mcapi_auth import auth as mcauth
 
     assert mcauth.login is not None
-    assert asyncio.iscoroutinefunction(mcauth.login)
+    assert inspect.iscoroutinefunction(mcauth.login)

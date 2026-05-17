@@ -1,5 +1,4 @@
 """Authorization-Code with PKCE flow (alternative to device-code).
-
 For desktop apps that can spin up a localhost HTTP listener for the
 redirect, the auth-code flow is friendlier than device-code: the user
 sees a normal browser sign-in instead of having to type a code.
@@ -24,16 +23,16 @@ For the *full* MS → Xbox → Mojang chain returning a
 ``MinecraftSession``, see :func:`mcapi_auth.login_via_browser`.
 """
 
-from __future__ import annotations
 
 import asyncio
 import base64
 import contextlib
 import hashlib
+import inspect
 import logging
 import secrets
 import webbrowser
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from urllib.parse import parse_qs, urlencode, urlparse
 
@@ -152,12 +151,12 @@ async def exchange_authorization_code(
 # -- Convenience: full browser-driven flow --------------------------------
 
 _DEFAULT_SUCCESS_HTML = (
-    b"<!doctype html><html><head><meta charset=utf-8>"
-    b"<title>Signed in</title></head>"
-    b"<body style='font-family:system-ui;text-align:center;padding:3em'>"
-    b"<h1>Signed in</h1>"
-    b"<p>You can close this tab and return to the application.</p>"
-    b"</body></html>"
+    "<!doctype html><html><head><meta charset=utf-8>"
+    "<title>Signed in</title></head>"
+    "<body style='font-family:system-ui;text-align:center;padding:3em'>"
+    "<h1>Signed in</h1>"
+    "<p>You can close this tab and return to the application.</p>"
+    "</body></html>"
 )
 
 
@@ -169,8 +168,8 @@ async def acquire_msa_via_browser(  # NOSONAR linear protocol stages; splitting 
     redirect_path: str = "/callback",
     prompt: str | None = None,
     scope: str = MSA_SCOPE,
-    open_browser: Callable[[str], object] | None = None,
-    success_html: bytes = _DEFAULT_SUCCESS_HTML,
+    open_browser: Callable[[str], None | Awaitable[None]] | None = None,
+    success_html: str = _DEFAULT_SUCCESS_HTML,
     http_client: httpx.AsyncClient | None = None,
 ) -> MSATokens:
     """Run the authorization-code + PKCE flow end-to-end via a browser.
@@ -238,7 +237,7 @@ async def acquire_msa_via_browser(  # NOSONAR linear protocol stages; splitting 
             # browser prefetch / favicon / preview request to the same
             # path can race the user's real redirect.
             is_oauth_callback = "code" in params or "error" in params
-            body = success_html
+            body = success_html.encode("utf-8")
             writer.write(
                 b"HTTP/1.1 200 OK\r\n"
                 b"Content-Type: text/html; charset=utf-8\r\n"
@@ -284,7 +283,9 @@ async def acquire_msa_via_browser(  # NOSONAR linear protocol stages; splitting 
 
     opener = open_browser if open_browser is not None else webbrowser.open
     try:
-        opener(url)
+        result = opener(url)
+        if inspect.isawaitable(result):
+            await result
     except Exception:
         logger.warning("failed to open browser for auth-code flow; visit manually: %s", url)
 

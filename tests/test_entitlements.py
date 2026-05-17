@@ -1,7 +1,5 @@
 """Tests for ``/entitlements/mcstore`` fetch + flag derivation."""
 
-from __future__ import annotations
-
 import pytest
 import respx
 

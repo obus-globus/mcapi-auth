@@ -1,7 +1,5 @@
 """Stage 5: Mojang exchange and profile fetch."""
 
-from __future__ import annotations
-
 import logging
 from typing import ClassVar
 

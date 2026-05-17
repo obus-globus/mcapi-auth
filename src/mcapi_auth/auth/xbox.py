@@ -1,7 +1,5 @@
 """Stages 3-4: Xbox Live and Xbox STS authentication."""
 
-from __future__ import annotations
-
 import logging
 from typing import Any, ClassVar
 
@@ -11,7 +9,7 @@ from pydantic import ValidationError, model_validator
 from .._constants import XBL_AUTH_URL, XSTS_AUTH_URL, XSTS_RELYING_PARTY
 from .._http import acquire_client, parse_json_object_auth
 from .._models import McModel
-from ..exceptions import MCAuthError, XboxAuthError, xerr_to_exception
+from ..exceptions import McAuthError, XboxAuthError, xerr_to_exception
 
 __all__ = ["XSTSToken", "XboxLiveToken", "authenticate_xbl", "authenticate_xsts"]
 
@@ -131,7 +129,7 @@ async def authenticate_xsts(
     if response.status_code == 401:
         try:
             data = parse_json_object_auth(response)
-        except MCAuthError:
+        except McAuthError:
             raise xerr_to_exception(None) from None
         xerr_raw = data.get("XErr")
         xerr: int | None = xerr_raw if isinstance(xerr_raw, int) else None

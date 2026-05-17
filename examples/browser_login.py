@@ -1,5 +1,4 @@
 """Authorization-code (browser) login example.
-
 Demonstrates :func:`mcapi_auth.login_via_browser`. Run with::
 
     uv run python examples/browser_login.py
@@ -25,7 +24,6 @@ to force the account picker (useful when more than one MS account is
 signed in to the browser).
 """
 
-from __future__ import annotations
 
 import asyncio
 import logging

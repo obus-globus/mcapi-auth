@@ -1,7 +1,5 @@
 """Tests for Xbox Live + XSTS stages."""
 
-from __future__ import annotations
-
 import pytest
 import respx
 
@@ -89,7 +87,7 @@ async def test_authenticate_xsts_401_without_xerr_still_raises() -> None:
 @respx.mock
 async def test_authenticate_xsts_401_with_non_json_body_falls_back_to_generic() -> None:
     # Regression: a 401 with HTML/text body must still yield a typed XSTSError
-    # rather than leaking the underlying MCAuthError raised by the JSON parser.
+    # rather than leaking the underlying McAuthError raised by the JSON parser.
     respx.post(XSTS_AUTH_URL).respond(status_code=401, text="<html>access denied</html>")
     with pytest.raises(XSTSError) as info:
         _ = await authenticate_xsts("xbl-tok")

@@ -1,5 +1,4 @@
 """mcapi-auth — Microsoft → Minecraft auth **and** Mojang REST APIs.
-
 A single async, typed Python library that covers:
 
 * :mod:`mcapi_auth.auth` — the 5-stage Microsoft → Mojang token chain
@@ -27,7 +26,6 @@ For finer-grained access, import directly from
 :mod:`mcapi_auth.auth` / :mod:`mcapi_auth.api`.
 """
 
-from __future__ import annotations
 
 import logging
 from importlib.metadata import PackageNotFoundError
@@ -128,7 +126,6 @@ from .exceptions import (
     InvalidProfileError,
     McApiAuthError,
     McApiError,
-    MCAuthError,
     McAuthError,
     MinecraftAuthError,
     MinecraftProfileNotFoundError,
@@ -181,7 +178,6 @@ __all__ = [
     "HttpError",
     "InvalidProfileError",
     "JoinServerError",
-    "MCAuthError",
     "MSAAuthError",
     "MSAFlowError",
     "MSATokens",

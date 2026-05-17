@@ -1,10 +1,8 @@
 """Endpoint URLs and protocol constants.
-
 Everything that might shift if Microsoft / Mojang move their APIs around
 is collected here so refactors stay tight to one file.
 """
 
-from __future__ import annotations
 
 from typing import Final
 

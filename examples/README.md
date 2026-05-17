@@ -56,5 +56,5 @@ uv run python examples/login.py
 ```
 
 Most examples write the refresh token to the default
-`FileTokenStorage` location (`~/.local/state/mcauth/refresh_token`),
+`FileTokenStorage` location (`~/.local/state/mcapi_auth/refresh_token`),
 so re-running them won't re-prompt until that token rotates out.

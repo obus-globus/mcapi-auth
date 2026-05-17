@@ -1,7 +1,5 @@
 """Tests for the XErr-code → exception mapping."""
 
-from __future__ import annotations
-
 import pytest
 
 from mcapi_auth import _constants as c

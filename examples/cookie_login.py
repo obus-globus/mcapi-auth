@@ -1,5 +1,4 @@
 """Bulk-auth via browser cookies — try MSA-v1 first, fall back to SISU.
-
 You'll need to extract Microsoft login cookies (``MSPAuth``, ``MSPProf``,
 ``RPSSecAuth``, …) from a browser session that is signed into the target
 account. Selenium / nodriver / playwright with a real profile all work;
@@ -12,7 +11,6 @@ tool is yours.
    automate. They are bulk-auth primitives, not a way around 2FA.
 """
 
-from __future__ import annotations
 
 import asyncio
 import os

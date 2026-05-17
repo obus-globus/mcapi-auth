@@ -1,12 +1,10 @@
 """Public profile / UUID lookup endpoints (no authentication required).
-
 All three functions here hit ``api.mojang.com`` / ``sessionserver.mojang.com``.
 The endpoints are rate-limited (Mojang's documented number is ~600 req per
 10 min per IP for the GET name→UUID path; bulk POSTs share a similar bucket).
 A 429 response surfaces as :class:`mcapi_auth.RateLimitedError`.
 """
 
-from __future__ import annotations
 
 from typing import Any, ClassVar, cast
 

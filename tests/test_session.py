@@ -1,7 +1,5 @@
 """Tests for the MinecraftSession dataclass."""
 
-from __future__ import annotations
-
 import pytest
 from pydantic import ValidationError
 from whenever import Instant

@@ -1,5 +1,4 @@
 """POST `sessionserver/join` — prove profile ownership in a custom handshake.
-
 This is the same call vanilla clients make during the joinServer step
 of the protocol handshake. Useful when implementing a third-party
 service that wants to verify a user owns the MC profile they claim
@@ -14,7 +13,6 @@ Typical flow:
    profile / hash pair within the next ~30s.
 """
 
-from __future__ import annotations
 
 import asyncio
 

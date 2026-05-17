@@ -1,5 +1,4 @@
 """Authenticated profile / skin / cape / name endpoints.
-
 Every function in this module takes a ``token: TokenLike`` — either a raw
 Minecraft access-token string or a :class:`mcapi_auth.MinecraftSession` (anything
 exposing an ``access_token`` attribute).
@@ -10,7 +9,6 @@ mapped to :mod:`mcapi_auth.exceptions` subclasses by status code, so callers
 can ``except NameTakenError`` rather than parsing strings.
 """
 
-from __future__ import annotations
 
 from enum import StrEnum
 from typing import Any, ClassVar, Literal

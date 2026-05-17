@@ -1,7 +1,5 @@
 """Tests for Mojang exchange + profile fetch."""
 
-from __future__ import annotations
-
 import pytest
 import respx
 

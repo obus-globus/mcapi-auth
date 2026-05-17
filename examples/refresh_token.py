@@ -1,5 +1,4 @@
 """Reuse a saved refresh token — skip the device-code prompt entirely.
-
 `mcapi_auth.login()` already does this for you transparently (it tries the
 stored refresh token first and only falls back to device-code on
 failure). This example shows the *low-level* refresh path: take a
@@ -11,7 +10,6 @@ Useful when you persist refresh tokens somewhere other than
 your orchestrator, ...).
 """
 
-from __future__ import annotations
 
 import asyncio
 import os
@@ -28,7 +26,7 @@ async def main() -> None:
     if not refresh_token:
         print(
             "Set MCAUTH_REFRESH_TOKEN to a previously-obtained refresh token,\n"
-            "e.g. `MCAUTH_REFRESH_TOKEN=$(cat ~/.local/share/mcauth/refresh.json | jq -r .refresh_token) "
+            "e.g. `MCAUTH_REFRESH_TOKEN=$(cat ~/.local/share/mcapi_auth/refresh.json | jq -r .refresh_token) "
             "uv run examples/refresh_token.py`",
             file=sys.stderr,
         )

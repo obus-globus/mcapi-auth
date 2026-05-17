@@ -1,7 +1,5 @@
 """Tests for FileTokenStorage."""
 
-from __future__ import annotations
-
 import json
 import os
 import stat
@@ -69,13 +67,13 @@ async def test_load_returns_none_when_field_missing(tmp_path: Path) -> None:
 
 def test_default_storage_path_honors_xdg_state_home(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("XDG_STATE_HOME", "/tmp/xdg")
-    assert default_storage_path() == Path("/tmp/xdg/mcauth/refresh_token.json")
+    assert default_storage_path() == Path("/tmp/xdg/mcapi_auth/refresh_token.json")
 
 
 def test_default_storage_path_falls_back_to_home(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("XDG_STATE_HOME", raising=False)
     monkeypatch.setattr("pathlib.Path.home", lambda: Path("/tmp/fake-home"))
-    assert default_storage_path() == Path("/tmp/fake-home/.local/state/mcauth/refresh_token.json")
+    assert default_storage_path() == Path("/tmp/fake-home/.local/state/mcapi_auth/refresh_token.json")
 
 
 async def test_save_replaces_existing_value(tmp_path: Path) -> None:

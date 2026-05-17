@@ -1,5 +1,4 @@
 """Exception types raised by :mod:`mcapi_auth`.
-
 Two parallel trees sit under a single root:
 
 - :class:`McAuthError` covers everything in the Microsoft → XBL → XSTS →
@@ -14,7 +13,6 @@ Network-level failures propagate as :class:`httpx.RequestError`
 unchanged — those are not our domain.
 """
 
-from __future__ import annotations
 
 from ._constants import (
     XERR_CHILD_ACCOUNT,
@@ -33,7 +31,6 @@ __all__ = [
     "ForbiddenError",
     "HttpError",
     "InvalidProfileError",
-    "MCAuthError",
     "MSAAuthError",
     "MSAFlowError",
     "McApiAuthError",
@@ -69,10 +66,6 @@ class McApiAuthError(Exception):
 
 class McAuthError(McApiAuthError):
     """Base class for every failure in the Microsoft → Mojang token chain."""
-
-
-# Back-compat alias for the pre-merge ``mcauth`` API.
-MCAuthError = McAuthError
 
 
 class MSAAuthError(McAuthError):

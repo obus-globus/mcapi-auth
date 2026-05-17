@@ -1,7 +1,5 @@
 """Stages 1-2: Microsoft device-code flow and refresh-token rotation."""
 
-from __future__ import annotations
-
 import asyncio
 import logging
 

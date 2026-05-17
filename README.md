@@ -112,7 +112,7 @@ session = await login(storage=MemoryStorage())
 ```
 
 The default storage (`FileTokenStorage`) writes JSON to
-`$XDG_STATE_HOME/mcauth/refresh_token.json` (or `~/.local/state/mcauth/...`)
+`$XDG_STATE_HOME/mcapi_auth/refresh_token.json` (or `~/.local/state/mcauth/...`)
 with `0600` permissions and atomic replace on save. (The on-disk path
 is kept under `mcauth/` so refresh tokens persisted by the old
 standalone `mcauth` package are picked up transparently.)

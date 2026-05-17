@@ -1,5 +1,4 @@
 """Piston-meta — the launcher/version manifest.
-
 This is what the official launcher reads to know which Minecraft versions
 exist and where to download each one's client jar, server jar, asset index,
 library JARs, etc.
@@ -20,7 +19,6 @@ server jar, asset-index URL) and keeps the raw dict around as ``.raw`` for
 anything else.
 """
 
-from __future__ import annotations
 
 from typing import Any, ClassVar
 

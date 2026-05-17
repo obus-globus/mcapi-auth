@@ -1,11 +1,9 @@
 """Check Minecraft entitlements (Java / Bedrock / Game Pass).
-
 `/minecraft/profile` returns 404 for accounts that don't own the Java
 edition — but that's also what you get for Bedrock-only and Game-Pass
 users. To tell them apart, hit `/entitlements/mcstore` directly.
 """
 
-from __future__ import annotations
 
 import asyncio
 

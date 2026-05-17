@@ -1,5 +1,4 @@
 """Refresh-token persistence.
-
 By default, the MSA refresh token is stored as JSON in an XDG state file
 with ``0600`` permissions. Callers that need anything else (keyring,
 encrypted blob, in-memory only) implement the :class:`TokenStorage`
@@ -9,7 +8,6 @@ Only the refresh token is persisted — short-lived access tokens are
 re-derived on every call.
 """
 
-from __future__ import annotations
 
 import asyncio
 import contextlib
@@ -50,7 +48,7 @@ def default_storage_path() -> Path:
     """The XDG state path where :class:`FileTokenStorage` defaults to."""
     base_env = os.environ.get("XDG_STATE_HOME")
     base = Path(base_env) if base_env else Path.home() / ".local" / "state"
-    return base / "mcauth" / "refresh_token.json"
+    return base / "mcapi_auth" / "refresh_token.json"
 
 
 class FileTokenStorage:

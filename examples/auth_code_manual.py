@@ -1,5 +1,4 @@
 """Authorization-code + PKCE flow, *without* the built-in listener.
-
 `login_via_browser()` / `acquire_msa_via_browser()` already wrap this up
 with a stdlib HTTP listener — use them when you can. This example is
 for the case where you have your *own* HTTP server (FastAPI, Flask,
@@ -17,7 +16,6 @@ Skeleton:
    `MinecraftSession`.
 """
 
-from __future__ import annotations
 
 import asyncio
 import secrets
