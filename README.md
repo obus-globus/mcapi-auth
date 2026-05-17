@@ -305,6 +305,46 @@ revoke it, every Minecraft launcher on Earth breaks the same day. Pass
 a different `client_id=` to `login()` if you have your own MSA app
 registration.
 
+## Known client_id catalog
+
+`mcapi_auth.KNOWN_CLIENT_IDS` maps friendly aliases to well-known
+Microsoft client_ids used across the Minecraft ecosystem. v1 (16-hex,
+no dashes) IDs work against `login.live.com/oauth20_*.srf` with the
+`MBI_SSL` scope; v2 (Azure-AD GUID) IDs work against
+`login.microsoftonline.com/consumers/oauth2/v2.0/*` with
+`XboxLive.signin offline_access`.
+
+The matrix below is what each `client_id` actually accepts as a
+`redirect_uri`, as derived from probing every entry end-to-end against
+the v1 and v2 `authorize` endpoints. Use the listed flow:
+
+| alias                  | type | accepted redirect_uri(s)                                 | flow                  |
+|--|--|--|--|
+| `java`                 | v1   | OOB only (`oauth20_desktop.srf`)                         | `login_via_browser_v1`  |
+| `bedrock-android`      | v1   | OOB only                                                 | `login_via_browser_v1`  |
+| `bedrock-ios`          | v1   | OOB only                                                 | `login_via_browser_v1`  |
+| `bedrock-nintendo`     | v1   | OOB only                                                 | `login_via_browser_v1`  |
+| `bedrock-playstation`  | v1   | OOB only                                                 | `login_via_browser_v1`  |
+| `bedrock-win32`        | v1   | **broken upstream** (OOB returns `invalid_request`)      | — |
+| `xbox-app-ios`         | v1   | OOB only                                                 | `login_via_browser_v1`  |
+| `xbox-gamepass-ios`    | v1   | OOB only                                                 | `login_via_browser_v1`  |
+| `prism` *(default)*    | v2   | `http://{127.0.0.1,localhost}:*/` (root path)            | `login_via_browser` or `login` (device-code) |
+| `liquidlauncher`/`liquidbounce` | v2 | `http://localhost:*/login`                          | `login_via_browser` or `login` |
+| `edu`                  | v2   | none — no loopback registered                            | `login` (device-code) only |
+| `office365`            | v2   | none — no loopback registered                            | `login` (device-code) only |
+
+Helpers:
+
+- `is_v1_client_id(client_id)` — decide between v1/v2 endpoint families.
+- `resolve_client_id(name_or_id)` — alias → client_id lookup.
+- `resolve_browser_redirect(client_id)` — returns
+  `(bind_host, redirect_path)` for clients with a known registered
+  loopback URI (currently `prism`, `liquidlauncher`); `None` otherwise.
+- `is_browser_unsupported(client_id)` — `True` if
+  `login_via_browser` (v2 loopback) cannot succeed for this client_id:
+  every v1 ID (rejected by the v2 endpoint as `AADSTS70001`) plus
+  every v2 ID without a loopback URL registered (`edu`, `office365`).
+
 ## License
 
 MIT. See [`LICENSE`](./LICENSE).
