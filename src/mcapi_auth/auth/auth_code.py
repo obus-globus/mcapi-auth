@@ -38,10 +38,14 @@ from urllib.parse import parse_qs, urlencode, urlparse
 import httpx
 
 from .._constants import (
-    MINECRAFT_LAUNCHER_CLIENT_ID,
+    LIVE_CONNECT_AUTHORIZE_URL,
+    LIVE_CONNECT_SCOPE_MBI_SSL,
+    LIVE_CONNECT_TOKEN_URL,
+    MINECRAFT_LAUNCHER_V1_CLIENT_ID,
     MSA_AUTHORIZE_URL,
     MSA_SCOPE,
     MSA_TOKEN_URL,
+    PRISM_LAUNCHER_CLIENT_ID,
 )
 from .._http import acquire_client, parse_json_object_auth
 from ..exceptions import MSAFlowError
@@ -50,6 +54,7 @@ from .msa import MSATokens, _parse_token_response  # pyright: ignore[reportPriva
 __all__ = [
     "PKCEChallenge",
     "acquire_msa_via_browser",
+    "acquire_msa_via_browser_v1",
     "build_authorize_url",
     "create_pkce_challenge",
     "exchange_authorization_code",
@@ -87,63 +92,73 @@ def create_pkce_challenge() -> PKCEChallenge:
 def build_authorize_url(
     *,
     redirect_uri: str,
-    pkce: PKCEChallenge,
+    pkce: PKCEChallenge | None = None,
     state: str | None = None,
-    client_id: str = MINECRAFT_LAUNCHER_CLIENT_ID,
+    client_id: str = PRISM_LAUNCHER_CLIENT_ID,
     scope: str = MSA_SCOPE,
     prompt: str | None = None,
+    authorize_url: str = MSA_AUTHORIZE_URL,
 ) -> str:
     """Build the MSA ``/authorize`` URL the user must visit.
 
     ``state`` is strongly recommended — generate a random string, store
     it, and reject the callback if it doesn't match. ``prompt`` may be
     ``"select_account"`` to force the account picker.
+
+    ``pkce`` may be omitted for legacy Live-Connect v1 endpoints which
+    do not support PKCE. ``authorize_url`` defaults to the v2 endpoint
+    and may be overridden (e.g. to :data:`LIVE_CONNECT_AUTHORIZE_URL`).
     """
     params: dict[str, str] = {
         "client_id": client_id,
         "redirect_uri": redirect_uri,
         "response_type": "code",
         "scope": scope,
-        "code_challenge": pkce.challenge,
-        "code_challenge_method": pkce.method,
     }
+    if pkce is not None:
+        params["code_challenge"] = pkce.challenge
+        params["code_challenge_method"] = pkce.method
     if state is not None:
         params["state"] = state
     if prompt is not None:
         params["prompt"] = prompt
-    return f"{MSA_AUTHORIZE_URL}?{urlencode(params)}"
+    return f"{authorize_url}?{urlencode(params)}"
 
 
 async def exchange_authorization_code(
     *,
     redirect_uri: str,
     code: str,
-    pkce_verifier: str,
-    client_id: str = MINECRAFT_LAUNCHER_CLIENT_ID,
+    pkce_verifier: str | None = None,
+    client_id: str = PRISM_LAUNCHER_CLIENT_ID,
+    token_url: str = MSA_TOKEN_URL,
     http_client: httpx.AsyncClient | None = None,
 ) -> MSATokens:
     """Exchange an authorization ``code`` for MSA access + refresh tokens.
 
+    ``pkce_verifier`` may be ``None`` for the legacy Live-Connect v1
+    flow. ``token_url`` defaults to the v2 endpoint; set it to
+    :data:`LIVE_CONNECT_TOKEN_URL` for the v1 flow.
+
     Raises :class:`MSAFlowError` on a non-200 response from the token
     endpoint.
     """
+    data: dict[str, str] = {
+        "client_id": client_id,
+        "code": code,
+        "grant_type": "authorization_code",
+        "redirect_uri": redirect_uri,
+    }
+    if pkce_verifier is not None:
+        data["code_verifier"] = pkce_verifier
     async with acquire_client(http_client) as c:
-        response = await c.post(
-            MSA_TOKEN_URL,
-            data={
-                "client_id": client_id,
-                "code": code,
-                "grant_type": "authorization_code",
-                "redirect_uri": redirect_uri,
-                "code_verifier": pkce_verifier,
-            },
-        )
+        response = await c.post(token_url, data=data)
     if response.status_code == 200:
         return _parse_token_response(response)
-    data = parse_json_object_auth(response)
+    parsed = parse_json_object_auth(response)
     raise MSAFlowError(
         "authorization-code exchange failed: "
-        f"status={response.status_code} error={data.get('error', 'unknown')!r}"
+        f"status={response.status_code} error={parsed.get('error', 'unknown')!r}"
     )
 
 
@@ -161,7 +176,7 @@ _DEFAULT_SUCCESS_HTML = (
 
 async def acquire_msa_via_browser(  # NOSONAR linear protocol stages; splitting hurts readability
     *,
-    client_id: str = MINECRAFT_LAUNCHER_CLIENT_ID,
+    client_id: str = PRISM_LAUNCHER_CLIENT_ID,
     bind_host: str = "127.0.0.1",
     bind_port: int = 0,
     redirect_path: str = "/callback",
@@ -170,14 +185,24 @@ async def acquire_msa_via_browser(  # NOSONAR linear protocol stages; splitting 
     open_browser: Callable[[str], None | Awaitable[None]] | None = None,
     success_html: str = _DEFAULT_SUCCESS_HTML,
     http_client: httpx.AsyncClient | None = None,
+    authorize_url: str = MSA_AUTHORIZE_URL,
+    token_url: str = MSA_TOKEN_URL,
+    use_pkce: bool = True,
 ) -> MSATokens:
-    """Run the authorization-code + PKCE flow end-to-end via a browser.
+    """Run the authorization-code flow end-to-end via a browser.
 
     Spins up a stdlib-only asyncio TCP listener on
     ``bind_host:bind_port`` (port ``0`` picks a free one), opens the
     user's browser to the MSA authorize URL, waits for the redirect
     callback, validates the CSRF ``state``, and exchanges the resulting
     ``code`` for :class:`MSATokens`.
+
+    By default this targets the modern v2 ``/consumers/oauth2/v2.0/*``
+    endpoints with PKCE. Pass ``authorize_url=LIVE_CONNECT_AUTHORIZE_URL``,
+    ``token_url=LIVE_CONNECT_TOKEN_URL``, ``use_pkce=False``, and the
+    appropriate Live-Connect scope + client_id to drive the v1
+    ``login.live.com/oauth20_*.srf`` flow instead — or just call
+    :func:`acquire_msa_via_browser_v1`.
 
     This function does not impose its own deadline — wrap the call in
     ``async with asyncio.timeout(N):`` if you need a bounded wait
@@ -193,7 +218,7 @@ async def acquire_msa_via_browser(  # NOSONAR linear protocol stages; splitting 
     suppress the automatic browser open and just hand the URL to the
     caller's UI.
     """
-    pkce = create_pkce_challenge()
+    pkce = create_pkce_challenge() if use_pkce else None
     state = secrets.token_urlsafe(24)
     loop = asyncio.get_running_loop()
     received: asyncio.Future[dict[str, str]] = loop.create_future()
@@ -278,6 +303,7 @@ async def acquire_msa_via_browser(  # NOSONAR linear protocol stages; splitting 
         client_id=client_id,
         scope=scope,
         prompt=prompt,
+        authorize_url=authorize_url,
     )
 
     opener = open_browser if open_browser is not None else webbrowser.open
@@ -309,7 +335,48 @@ async def acquire_msa_via_browser(  # NOSONAR linear protocol stages; splitting 
     return await exchange_authorization_code(
         redirect_uri=redirect_uri,
         code=code,
-        pkce_verifier=pkce.verifier,
+        pkce_verifier=pkce.verifier if pkce else None,
         client_id=client_id,
+        token_url=token_url,
         http_client=http_client,
+    )
+
+
+async def acquire_msa_via_browser_v1(
+    *,
+    client_id: str = MINECRAFT_LAUNCHER_V1_CLIENT_ID,
+    bind_host: str = "127.0.0.1",
+    bind_port: int = 0,
+    redirect_path: str = "/callback",
+    scope: str = LIVE_CONNECT_SCOPE_MBI_SSL,
+    open_browser: Callable[[str], None | Awaitable[None]] | None = None,
+    success_html: str = _DEFAULT_SUCCESS_HTML,
+    http_client: httpx.AsyncClient | None = None,
+) -> MSATokens:
+    """Run the **legacy Live-Connect v1** auth-code flow via a browser.
+
+    Same listener / redirect plumbing as
+    :func:`acquire_msa_via_browser`, but targets the older
+    ``login.live.com/oauth20_*.srf`` endpoints with the compressed
+    Minecraft Launcher client_id (``00000000402b5328`` by default) and
+    the ``MBI_SSL`` scope. PKCE is not used — v1 silently ignores it
+    when present and many of its quirks pre-date PKCE entirely.
+
+    Use this when device-code or v2 auth-code flows are unavailable
+    (e.g. a tenant restriction on the consumers endpoint, or you want
+    parity with what the official Minecraft Launcher historically did).
+    """
+    return await acquire_msa_via_browser(
+        client_id=client_id,
+        bind_host=bind_host,
+        bind_port=bind_port,
+        redirect_path=redirect_path,
+        prompt=None,
+        scope=scope,
+        open_browser=open_browser,
+        success_html=success_html,
+        http_client=http_client,
+        authorize_url=LIVE_CONNECT_AUTHORIZE_URL,
+        token_url=LIVE_CONNECT_TOKEN_URL,
+        use_pkce=False,
     )

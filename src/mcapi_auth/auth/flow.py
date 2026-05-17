@@ -6,9 +6,15 @@ from collections.abc import Awaitable, Callable
 
 import httpx
 
-from .._constants import MSA_SCOPE, PRISM_LAUNCHER_CLIENT_ID
+from .._constants import (
+    LIVE_CONNECT_SCOPE_MBI_SSL,
+    LIVE_CONNECT_TOKEN_URL,
+    MINECRAFT_LAUNCHER_V1_CLIENT_ID,
+    MSA_SCOPE,
+    PRISM_LAUNCHER_CLIENT_ID,
+)
 from ..exceptions import MSAFlowError
-from .auth_code import acquire_msa_via_browser
+from .auth_code import acquire_msa_via_browser, acquire_msa_via_browser_v1
 from .minecraft import fetch_profile, login_with_xbox
 from .msa import (
     DeviceCodePrompt,
@@ -21,7 +27,7 @@ from .session import MinecraftSession
 from .storage import NullTokenStorage, TokenStorage
 from .xbox import authenticate_xbl, authenticate_xsts
 
-__all__ = ["DeviceCodeCallback", "login", "login_via_browser"]
+__all__ = ["DeviceCodeCallback", "login", "login_via_browser", "login_via_browser_v1"]
 
 logger = logging.getLogger(__name__)
 
@@ -212,6 +218,79 @@ async def login_via_browser(
             bind_port=bind_port,
             redirect_path=redirect_path,
             prompt=prompt,
+            scope=scope,
+            open_browser=open_browser,
+            http_client=http_client,
+        )
+
+    xbl = await authenticate_xbl(msa_tokens.access_token, http_client=http_client)
+    xsts = await authenticate_xsts(xbl.token, http_client=http_client)
+    mc_token = await login_with_xbox(xsts.userhash, xsts.token, http_client=http_client)
+    profile = await fetch_profile(mc_token.access_token, http_client=http_client)
+
+    await actual_storage.save(msa_tokens.refresh_token)
+
+    return MinecraftSession(
+        access_token=mc_token.access_token,
+        refresh_token=msa_tokens.refresh_token,
+        uuid=profile.uuid,
+        username=profile.username,
+        msa_access_token=msa_tokens.access_token,
+        msa_access_token_expires_at=msa_tokens.expires_at,
+        minecraft_access_token_expires_at=mc_token.expires_at,
+    )
+
+
+async def login_via_browser_v1(
+    *,
+    storage: TokenStorage | None = None,
+    client_id: str = MINECRAFT_LAUNCHER_V1_CLIENT_ID,
+    bind_host: str = "127.0.0.1",
+    bind_port: int = 0,
+    redirect_path: str = "/callback",
+    scope: str = LIVE_CONNECT_SCOPE_MBI_SSL,
+    open_browser: Callable[[str], None | Awaitable[None]] | None = None,
+    http_client: httpx.AsyncClient | None = None,
+) -> MinecraftSession:
+    """Run the full auth chain via the **legacy Live-Connect v1** flow.
+
+    Mirror of :func:`login_via_browser` but talks to
+    ``login.live.com/oauth20_*.srf`` with the compressed Minecraft
+    Launcher client_id (``00000000402b5328`` by default) and the
+    ``MBI_SSL`` scope. Useful when the modern v2 endpoints reject
+    your account / tenant or you specifically want parity with the
+    historical launcher behaviour.
+
+    Refresh-token reuse honours the v1 endpoint and scope.
+
+    See :func:`login_via_browser` for parameter semantics.
+    """
+    actual_storage: TokenStorage = storage if storage is not None else NullTokenStorage()
+
+    msa_tokens: MSATokens | None = None
+    refresh_token = await actual_storage.load()
+    if refresh_token is not None:
+        try:
+            msa_tokens = await exchange_refresh_token(
+                refresh_token,
+                client_id=client_id,
+                http_client=http_client,
+                token_url=LIVE_CONNECT_TOKEN_URL,
+                scope=scope,
+            )
+        except MSAFlowError as e:
+            logger.info(
+                "mcapi_auth: stored v1 refresh token rejected, falling back to browser flow: %s",
+                e,
+            )
+            await actual_storage.clear()
+
+    if msa_tokens is None:
+        msa_tokens = await acquire_msa_via_browser_v1(
+            client_id=client_id,
+            bind_host=bind_host,
+            bind_port=bind_port,
+            redirect_path=redirect_path,
             scope=scope,
             open_browser=open_browser,
             http_client=http_client,

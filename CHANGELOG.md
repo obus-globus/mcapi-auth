@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-05-17
+
+### Added
+
+- ``login_via_browser_v1`` and ``acquire_msa_via_browser_v1`` — a
+  full-chain interactive browser login that targets the legacy
+  Live-Connect v1 endpoints (``login.live.com/oauth20_*.srf``) using
+  the compressed Minecraft Launcher client_id
+  (``MINECRAFT_LAUNCHER_V1_CLIENT_ID = "00000000402b5328"``) and the
+  ``MBI_SSL`` scope. Useful when the modern v2 device-code / auth-code
+  flow is unavailable for an account or you specifically want parity
+  with what the official launcher historically did. No PKCE (v1
+  predates it); CSRF still protected via ``state``.
+- ``MINECRAFT_LAUNCHER_V1_CLIENT_ID`` re-exported from the top-level
+  ``mcapi_auth`` namespace alongside the existing v2 client_id
+  constants.
+
+### Changed
+
+- ``build_authorize_url``, ``exchange_authorization_code``,
+  ``acquire_msa_via_browser``, and ``exchange_refresh_token`` now take
+  optional ``authorize_url`` / ``token_url`` / ``use_pkce`` / ``scope``
+  kwargs so they can drive either the v2 or v1 endpoints. v2 remains
+  the default behavior.
+
 ## [0.5.0] - 2026-05-17
 
 ### Changed (breaking)

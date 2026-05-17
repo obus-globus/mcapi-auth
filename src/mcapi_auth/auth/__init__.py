@@ -9,6 +9,7 @@ entry points (:func:`login`, :func:`login_via_browser`,
 from .._constants import (
     LIVE_CONNECT_DESKTOP_REDIRECT_URI,
     MINECRAFT_LAUNCHER_CLIENT_ID,
+    MINECRAFT_LAUNCHER_V1_CLIENT_ID,
     PRISM_LAUNCHER_CLIENT_ID,
     PRISM_LAUNCHER_REDIRECT_URI,
 )
@@ -32,6 +33,7 @@ from ..exceptions import (
 from .auth_code import (
     PKCEChallenge,
     acquire_msa_via_browser,
+    acquire_msa_via_browser_v1,
     build_authorize_url,
     create_pkce_challenge,
     exchange_authorization_code,
@@ -47,7 +49,7 @@ from .cookies import (
     login_with_cookies_sisu,
 )
 from .entitlements import Entitlements, derive_entitlement_flags, fetch_entitlements
-from .flow import DeviceCodeCallback, login, login_via_browser
+from .flow import DeviceCodeCallback, login, login_via_browser, login_via_browser_v1
 from .minecraft import login_with_xbox
 from .msa import (
     DeviceCodePrompt,
@@ -65,6 +67,7 @@ from .xbox import XboxLiveToken, XSTSToken, authenticate_xbl, authenticate_xsts
 __all__ = [
     "LIVE_CONNECT_DESKTOP_REDIRECT_URI",
     "MINECRAFT_LAUNCHER_CLIENT_ID",
+    "MINECRAFT_LAUNCHER_V1_CLIENT_ID",
     "PRISM_LAUNCHER_CLIENT_ID",
     "PRISM_LAUNCHER_REDIRECT_URI",
     "AdultVerificationRequiredError",
@@ -98,6 +101,7 @@ __all__ = [
     "XboxAuthError",
     "XboxLiveToken",
     "acquire_msa_via_browser",
+    "acquire_msa_via_browser_v1",
     "authenticate_xbl",
     "authenticate_xsts",
     "build_authorize_url",
@@ -113,6 +117,7 @@ __all__ = [
     "join_server",
     "login",
     "login_via_browser",
+    "login_via_browser_v1",
     "login_with_cookies_msa_v1",
     "login_with_cookies_prism",
     "login_with_cookies_sisu",

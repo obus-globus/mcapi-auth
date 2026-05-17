@@ -150,21 +150,27 @@ async def exchange_refresh_token(
     *,
     client_id: str = PRISM_LAUNCHER_CLIENT_ID,
     http_client: httpx.AsyncClient | None = None,
+    token_url: str = MSA_TOKEN_URL,
+    scope: str = MSA_SCOPE,
 ) -> MSATokens:
     """Swap a refresh token for a fresh access + refresh pair.
 
+    Defaults target the v2 endpoint. For the legacy Live-Connect v1
+    flow, pass ``token_url=LIVE_CONNECT_TOKEN_URL``,
+    ``scope=LIVE_CONNECT_SCOPE_MBI_SSL``, and the v1 client_id.
+
     Raises :class:`MSAFlowError` if the refresh token is rejected — the
-    caller should fall back to :func:`request_device_code` after clearing
+    caller should fall back to the interactive flow after clearing
     persisted state.
     """
     async with acquire_client(http_client) as c:
         response = await c.post(
-            MSA_TOKEN_URL,
+            token_url,
             data={
                 "client_id": client_id,
                 "refresh_token": refresh_token,
                 "grant_type": "refresh_token",
-                "scope": MSA_SCOPE,
+                "scope": scope,
             },
         )
     if response.status_code == 200:
