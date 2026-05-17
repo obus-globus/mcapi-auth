@@ -64,7 +64,7 @@ def decode_minecraft_access_token(token: str) -> MinecraftTokenInfo:
     try:
         padded = payload_segment + "=" * (-len(payload_segment) % 4)
         decoded_bytes = base64.urlsafe_b64decode(padded.encode("ascii"))
-    except (ValueError, binascii.Error, UnicodeEncodeError) as e:
+    except (ValueError, binascii.Error, UnicodeEncodeError) as e:  # NOSONAR intentional: documents distinct error sources
         raise MinecraftTokenDecodeError(f"payload is not valid base64url: {e}") from e
     try:
         parsed: object = json.loads(decoded_bytes)
@@ -85,7 +85,7 @@ def decode_minecraft_access_token(token: str) -> MinecraftTokenInfo:
     )
 
 
-def _extract_profile(claims: dict[str, Any]) -> tuple[str | None, str | None]:
+def _extract_profile(claims: dict[str, Any]) -> tuple[str | None, str | None]:  # NOSONAR linear JWT-claims fallback chain
     """Find ``(username, uuid)`` in the MC JWT, or ``(None, None)`` if absent.
 
     Mojang carries the profile two ways:

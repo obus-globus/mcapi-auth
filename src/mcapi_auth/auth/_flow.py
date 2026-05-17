@@ -34,7 +34,7 @@ a Discord bot, GUI, etc.
 """
 
 
-async def _default_prompt(prompt: DeviceCodePrompt) -> None:
+async def _default_prompt(prompt: DeviceCodePrompt) -> None:  # NOSONAR must match async DeviceCodeCallback protocol
     # Library code normally doesn't print, but this single user-facing
     # interaction is the whole point of device-code flow — and the
     # alternative ("silently hang") is strictly worse. Callers who care
@@ -141,7 +141,7 @@ async def login_via_browser(
     bind_host: str = "127.0.0.1",
     bind_port: int = 0,
     redirect_path: str = "/callback",
-    timeout: float = 300.0,
+    timeout: float = 300.0,  # NOSONAR public API kwarg; do not change signature
     prompt: str | None = None,
     scope: str = MSA_SCOPE,
     open_browser: Callable[[str], object] | None = None,

@@ -165,13 +165,13 @@ class _CallbackTimeoutError(MSAFlowError):
     """Browser-driven auth-code flow timed out waiting for the redirect."""
 
 
-async def acquire_msa_via_browser(
+async def acquire_msa_via_browser(  # NOSONAR linear protocol stages; splitting hurts readability
     *,
     client_id: str = MINECRAFT_LAUNCHER_CLIENT_ID,
     bind_host: str = "127.0.0.1",
     bind_port: int = 0,
     redirect_path: str = "/callback",
-    timeout: float = 300.0,
+    timeout: float = 300.0,  # NOSONAR public API kwarg; do not change signature
     prompt: str | None = None,
     scope: str = MSA_SCOPE,
     open_browser: Callable[[str], object] | None = None,

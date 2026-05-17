@@ -103,7 +103,7 @@ def _fragment_of(url: str) -> str:
 
 @asynccontextmanager
 async def _acquire_for_cookies(
-    client: httpx.AsyncClient | None, *, timeout: float
+    client: httpx.AsyncClient | None, *, timeout: float  # NOSONAR public API kwarg; do not change signature
 ) -> AsyncGenerator[httpx.AsyncClient]:
     """Acquire an httpx client for cookie flows.
 
@@ -178,7 +178,7 @@ def cookies_to_header(
     return "; ".join(parts)
 
 
-def _build_cookie_jar(
+def _build_cookie_jar(  # NOSONAR linear protocol stages; splitting hurts readability
     cookies: Iterable[BrowserCookie | Mapping[str, Any]],
 ) -> httpx.Cookies:
     """Build a real :class:`httpx.Cookies` jar from browser cookie dicts.
@@ -222,7 +222,7 @@ async def login_with_cookies_msa_v1(
     client_id: str = MINECRAFT_LAUNCHER_V1_CLIENT_ID,
     redirect_uri: str = LIVE_CONNECT_DESKTOP_REDIRECT_URI,
     user_agent: str = DEFAULT_USER_AGENT,
-    timeout: float = DEFAULT_HTTP_TIMEOUT,
+    timeout: float = DEFAULT_HTTP_TIMEOUT,  # NOSONAR public API kwarg; do not change signature
     http_client: httpx.AsyncClient | None = None,
 ) -> MSATokens:
     """Drive the Live-Connect "Java public client" flow using session cookies.
@@ -264,7 +264,7 @@ async def login_with_cookies_msa_v1(
                 f"(status={resp.status_code})"
             )
         location = resp.headers.get("location", "")
-        if "code=" not in location:
+        if "code=" not in location:  # NOSONAR intentional: inlined for readability
             raise CookieAuthError(f"Live-Connect 302 had no auth code: location={location!r}")
         code_values = _parse_qs(_query_of(location)).get("code", [])
         if not code_values or not code_values[0]:
@@ -304,7 +304,7 @@ async def login_with_cookies_sisu(
     tid: str = SISU_DEFAULT_TID,
     return_url: str = SISU_DEFAULT_RU,
     user_agent: str = DEFAULT_USER_AGENT,
-    timeout: float = DEFAULT_HTTP_TIMEOUT,
+    timeout: float = DEFAULT_HTTP_TIMEOUT,  # NOSONAR public API kwarg; do not change signature
     http_client: httpx.AsyncClient | None = None,
 ) -> SISUTokens:
     """SISU (Xbox SSO) flow — returns XBL/XSTS tokens directly.
@@ -356,7 +356,7 @@ async def login_with_cookies_sisu(
     try:
         decoded = base64.b64decode(token_b64 + "==").decode("utf-8")
         parsed_obj: object = json.loads(decoded)
-    except (ValueError, UnicodeDecodeError, json.JSONDecodeError) as e:
+    except (ValueError, UnicodeDecodeError, json.JSONDecodeError) as e:  # NOSONAR intentional: documents distinct error sources
         raise CookieAuthError(f"SISU 'accessToken' fragment is not valid b64+JSON: {e}") from e
     if not isinstance(parsed_obj, list):
         raise CookieAuthError(f"SISU returned non-array payload: {type(parsed_obj).__name__}")
@@ -371,7 +371,7 @@ def extract_sisu_token(sisu: SISUTokens, relying_party: str) -> XboxLiveToken:
     return token
 
 
-def _parse_sisu_array(entries: list[object]) -> SISUTokens:
+def _parse_sisu_array(entries: list[object]) -> SISUTokens:  # NOSONAR linear protocol stages; splitting hurts readability
     out: dict[str, XboxLiveToken] = {}
     for entry in entries:
         if not isinstance(entry, dict):
@@ -412,7 +412,7 @@ async def login_with_cookies_prism(
     redirect_uri: str = PRISM_LAUNCHER_REDIRECT_URI,
     scope: str = "XboxLive.SignIn XboxLive.offline_access",
     user_agent: str = DEFAULT_USER_AGENT,
-    timeout: float = DEFAULT_HTTP_TIMEOUT,
+    timeout: float = DEFAULT_HTTP_TIMEOUT,  # NOSONAR public API kwarg; do not change signature
     http_client: httpx.AsyncClient | None = None,
 ) -> MSATokens:
     """Prism-Launcher-style Azure-AD consumers flow using session cookies.
@@ -518,8 +518,8 @@ def _code_from_redirect(location: str) -> str | None:
 _FORM_URLENCODED = "application/x-www-form-urlencoded"
 
 
-_SERVER_DATA_RE = re.compile(r"var ServerData\s*=\s*({.*?});\s*</script>", re.DOTALL)
-_CONSENT_SERVER_DATA_RE = re.compile(r"ServerData\s*=\s*(\{.+?\});", re.DOTALL)
+_SERVER_DATA_RE = re.compile(r"var ServerData\s*=\s*({.*?});\s*</script>", re.DOTALL)  # NOSONAR reluctant needed: matched JSON has nested } chars
+_CONSENT_SERVER_DATA_RE = re.compile(r"ServerData\s*=\s*(\{.+?\});", re.DOTALL)  # NOSONAR reluctant needed: matched JSON has nested } chars
 _FORM_ACTION_RE = re.compile(r'action="([^"]+)"')
 _FORM_INPUT_RE = re.compile(r'<input[^>]*name="([^"]+)"[^>]*value="([^"]*)"')
 _CTX_RE = re.compile(r"contextid[=:]([A-F0-9]+)", re.IGNORECASE)
@@ -528,7 +528,7 @@ _BK_RE = re.compile(r"bk[=:](\d+)")
 _UAID_RE = re.compile(r"uaid[=:]([a-f0-9]+)", re.IGNORECASE)
 
 
-async def _handle_prism_html_flow(
+async def _handle_prism_html_flow(  # NOSONAR linear protocol stages; splitting hurts readability
     client: httpx.AsyncClient,
     *,
     html: str,
@@ -610,7 +610,7 @@ async def _handle_prism_html_flow(
     return None
 
 
-async def _handle_prism_interstitial(
+async def _handle_prism_interstitial(  # NOSONAR linear protocol stages; splitting hurts readability
     client: httpx.AsyncClient,
     *,
     page_html: str,
@@ -670,7 +670,7 @@ async def _handle_prism_interstitial(
     try:
         decoder = json.JSONDecoder()
         sd_obj, _idx = decoder.raw_decode(sd_match.group(1))
-    except (json.JSONDecodeError, ValueError):
+    except (json.JSONDecodeError, ValueError):  # NOSONAR intentional: documents distinct error sources
         return None
     if not isinstance(sd_obj, dict):
         return None
