@@ -17,7 +17,7 @@ import tempfile
 from pathlib import Path
 from typing import Protocol, cast, runtime_checkable
 
-__all__ = ["FileTokenStorage", "TokenStorage", "default_storage_path"]
+__all__ = ["FileTokenStorage", "NullTokenStorage", "TokenStorage", "default_storage_path"]
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +41,24 @@ class TokenStorage(Protocol):
     async def clear(self) -> None:
         """Remove any persisted refresh token (used on hard auth failure)."""
         ...
+
+
+class NullTokenStorage:
+    """In-memory no-op storage. Forgets the refresh token at shutdown.
+
+    Default for :func:`mcapi_auth.login` since v0.5.0 — callers that
+    want persistence must pass an explicit
+    :class:`FileTokenStorage` (or any other ``TokenStorage`` impl).
+    """
+
+    async def load(self) -> str | None:
+        return None
+
+    async def save(self, refresh_token: str) -> None:
+        return
+
+    async def clear(self) -> None:
+        return
 
 
 def default_storage_path() -> Path:

@@ -18,7 +18,7 @@ from .msa import (
     request_device_code,
 )
 from .session import MinecraftSession
-from .storage import FileTokenStorage, TokenStorage
+from .storage import NullTokenStorage, TokenStorage
 from .xbox import authenticate_xbl, authenticate_xsts
 
 __all__ = ["DeviceCodeCallback", "login", "login_via_browser"]
@@ -70,9 +70,11 @@ async def login(
     4. Persist the (possibly rotated) refresh token via ``storage.save()``.
 
     Args:
-        storage: Refresh-token persistence backend. Defaults to a
-            :class:`FileTokenStorage` at the XDG state path. Pass an
-            in-memory implementation to disable persistence.
+        storage: Refresh-token persistence backend. Defaults to
+            :class:`NullTokenStorage` — i.e. **no persistence**, every
+            call starts a fresh device-code flow. Pass an explicit
+            :class:`FileTokenStorage` (or any other ``TokenStorage``
+            impl) to keep the rotated refresh token across runs.
         on_device_code: Awaitable called with the
             :class:`~mcapi_auth.auth.msa.DeviceCodePrompt` when the user needs to
             visit a URL. Only invoked when refresh-token reuse fails.
@@ -85,7 +87,7 @@ async def login(
         A :class:`MinecraftSession` carrying the Minecraft access token,
         UUID, username, and rotated refresh token.
     """
-    actual_storage: TokenStorage = storage if storage is not None else FileTokenStorage()
+    actual_storage: TokenStorage = storage if storage is not None else NullTokenStorage()
     prompt_cb: DeviceCodeCallback = (
         on_device_code if on_device_code is not None else _default_prompt
     )
@@ -166,9 +168,9 @@ async def login_via_browser(
     token is stored.
 
     Args:
-        storage: Refresh-token persistence backend (defaults to the same
-            XDG :class:`FileTokenStorage` as :func:`login`). Pass an
-            in-memory implementation to disable persistence.
+        storage: Refresh-token persistence backend. Defaults to
+            :class:`NullTokenStorage` (no persistence). Pass an
+            explicit :class:`FileTokenStorage` for cross-run reuse.
         client_id: MSA OAuth client_id. Defaults to the public
             Minecraft Launcher client_id.
         bind_host: Host to bind the local listener on
@@ -188,7 +190,7 @@ async def login_via_browser(
         A :class:`MinecraftSession` carrying the Minecraft access token,
         UUID, username, and rotated refresh token.
     """
-    actual_storage: TokenStorage = storage if storage is not None else FileTokenStorage()
+    actual_storage: TokenStorage = storage if storage is not None else NullTokenStorage()
 
     msa_tokens: MSATokens | None = None
     refresh_token = await actual_storage.load()

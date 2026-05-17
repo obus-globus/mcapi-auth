@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-05-17
+
+### Changed (breaking)
+
+- ``mcapi_auth.login`` and ``mcapi_auth.auth_code_login`` no longer
+  default to file-backed refresh-token persistence. The new default
+  ``storage`` is :class:`NullTokenStorage` (in-memory no-op), so the
+  library never writes to disk unless the caller asks it to. To
+  restore the previous behavior, pass
+  ``storage=FileTokenStorage()`` explicitly (the path defaults to
+  ``$XDG_STATE_HOME/mcapi_auth/refresh_token.json`` as before).
+
+### Added
+
+- ``NullTokenStorage`` exported from the top-level package as a
+  no-op ``TokenStorage`` implementation suitable for short-lived
+  scripts and tests.
+
 ## [0.4.2] - 2026-05-17
 
 ### Changed

@@ -58,7 +58,7 @@ from .msa import (
 )
 from .session import MinecraftSession
 from .session_server import JoinServerError, join_server
-from .storage import FileTokenStorage, TokenStorage, default_storage_path
+from .storage import FileTokenStorage, NullTokenStorage, TokenStorage, default_storage_path
 from .token import MinecraftTokenInfo, decode_minecraft_access_token
 from .xbox import XboxLiveToken, XSTSToken, authenticate_xbl, authenticate_xsts
 
@@ -87,6 +87,7 @@ __all__ = [
     "MinecraftSession",
     "MinecraftTokenInfo",
     "NoXboxAccountError",
+    "NullTokenStorage",
     "PKCEChallenge",
     "RegionBlockedError",
     "SISUTokens",
