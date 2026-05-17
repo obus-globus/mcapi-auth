@@ -36,7 +36,7 @@ from typing import Any, Self
 import httpx
 from whenever import Instant
 
-from .._models import McModel
+from .._models import InstantField, McModel
 from .app_config import MsaApplicationConfig
 from .flow import _invoke_callback  # pyright: ignore[reportPrivateUsage]
 from .holder import Holder
@@ -72,7 +72,12 @@ class _ChainSnapshot(McModel):
     xsts: XSTSToken | None = None
     minecraft: MinecraftToken | None = None
     profile: MinecraftProfile | None = None
-    save_version: int = 1
+    # XBL and XSTS tokens have no typed expiry on the wire — we
+    # synthesise one (~14h) at acquisition time and persist it so
+    # restored chains don't treat stale tokens as fresh.
+    xbl_expires_at: InstantField | None = None
+    xsts_expires_at: InstantField | None = None
+    save_version: int = 2
 
 
 class AuthChain:
@@ -103,11 +108,16 @@ class AuthChain:
         xsts: XSTSToken | None = None,
         minecraft: MinecraftToken | None = None,
         profile: MinecraftProfile | None = None,
+        xbl_expires_at: Instant | None = None,
+        xsts_expires_at: Instant | None = None,
         http_client: httpx.AsyncClient | None = None,
     ) -> None:
         self._app = app
         self._http_client = http_client
         self._chain_listeners: list[ChainChangeListener] = []
+        # Synthetic per-stage expiries for XBL/XSTS (no typed expiry on the wire).
+        self._xbl_expires_at: Instant | None = None
+        self._xsts_expires_at: Instant | None = None
 
         self._msa = Holder[MSATokens](
             msa,
@@ -128,9 +138,9 @@ class AuthChain:
         self._minecraft: Holder[MinecraftToken] | None = None
         self._profile: Holder[MinecraftProfile] | None = None
         if xbl is not None:
-            self._xbl = self._build_xbl_holder(xbl)
+            self._xbl = self._build_xbl_holder(xbl, expires_at=xbl_expires_at)
         if xsts is not None:
-            self._xsts = self._build_xsts_holder(xsts)
+            self._xsts = self._build_xsts_holder(xsts, expires_at=xsts_expires_at)
         if minecraft is not None:
             self._minecraft = self._build_mc_holder(minecraft)
         if profile is not None:
@@ -225,6 +235,8 @@ class AuthChain:
             xsts=snap.xsts,
             minecraft=snap.minecraft,
             profile=snap.profile,
+            xbl_expires_at=snap.xbl_expires_at,
+            xsts_expires_at=snap.xsts_expires_at,
             http_client=http_client,
         )
 
@@ -379,6 +391,8 @@ class AuthChain:
             xsts=self._xsts.get_cached() if self._xsts is not None else None,
             minecraft=self._minecraft.get_cached() if self._minecraft is not None else None,
             profile=self._profile.get_cached() if self._profile is not None else None,
+            xbl_expires_at=self._xbl_expires_at if self._xbl is not None else None,
+            xsts_expires_at=self._xsts_expires_at if self._xsts is not None else None,
         )
         text = snap.model_dump_json()
         if indent is None:
@@ -428,29 +442,40 @@ class AuthChain:
     # Holder builders
     # ------------------------------------------------------------------
 
-    def _build_xbl_holder(self, value: XboxLiveToken) -> Holder[XboxLiveToken]:
+    def _build_xbl_holder(
+        self, value: XboxLiveToken, *, expires_at: Instant | None = None
+    ) -> Holder[XboxLiveToken]:
         # XBL tokens don't expose a typed expiry — they're valid for
-        # ~16h. Treat them as expiring in 14h from now so the holder
-        # will rebuild on a fresh process. Persisted XBL tokens
-        # restored from JSON behave the same.
-        expiry = Instant.now().add(seconds=14 * 3600)
+        # ~16h. Treat them as expiring 14h after acquisition. The
+        # actual expiry is stored on the chain (so it survives
+        # round-tripping through dump_json/load_json) and bumped on
+        # every successful refresh.
+        self._xbl_expires_at = (
+            expires_at if expires_at is not None else Instant.now().add(seconds=14 * 3600)
+        )
         h = Holder[XboxLiveToken](
             value,
             refresher=self._refresh_xbl,
-            expires_at=lambda _v: expiry,
+            expires_at=lambda _v: self._xbl_expires_at or Instant.now(),
             name="XBL",
         )
+        h.add_listener(self._bump_xbl_expiry)
         h.add_listener(self._make_stage_dispatcher("xbl"))
         return h
 
-    def _build_xsts_holder(self, value: XSTSToken) -> Holder[XSTSToken]:
-        expiry = Instant.now().add(seconds=14 * 3600)
+    def _build_xsts_holder(
+        self, value: XSTSToken, *, expires_at: Instant | None = None
+    ) -> Holder[XSTSToken]:
+        self._xsts_expires_at = (
+            expires_at if expires_at is not None else Instant.now().add(seconds=14 * 3600)
+        )
         h = Holder[XSTSToken](
             value,
             refresher=self._refresh_xsts,
-            expires_at=lambda _v: expiry,
+            expires_at=lambda _v: self._xsts_expires_at or Instant.now(),
             name="XSTS",
         )
+        h.add_listener(self._bump_xsts_expiry)
         h.add_listener(self._make_stage_dispatcher("xsts"))
         return h
 
@@ -489,9 +514,18 @@ class AuthChain:
         self._xbl = None
         self._xsts = None
         self._minecraft = None
+        # Drop the synthetic expiries too so stale ones can't leak.
+        self._xbl_expires_at = None
+        self._xsts_expires_at = None
         # Profile may stay (UUID is stable across MSA rotations for the
         # same account). If callers want a fresh one they can call
         # refresh_profile().
+
+    async def _bump_xbl_expiry(self, _old: XboxLiveToken | None, _new: XboxLiveToken) -> None:
+        self._xbl_expires_at = Instant.now().add(seconds=14 * 3600)
+
+    async def _bump_xsts_expiry(self, _old: XSTSToken | None, _new: XSTSToken) -> None:
+        self._xsts_expires_at = Instant.now().add(seconds=14 * 3600)
 
     async def _dispatch(self, stage: str, old: Any, new: Any) -> None:
         for cb in list(self._chain_listeners):

@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.2] - 2026-05-17
+
+### Fixed
+
+- **AuthChain XBL/XSTS expiry now persists across ``dump_json`` →
+  ``load_json``.** Previously the synthetic 14-hour expiry was
+  recomputed at every holder construction, including deserialisation,
+  which would treat a 13-hour-old cached XBL/XSTS token as fresh and
+  cause downstream 401s after restoring a stale chain snapshot. The
+  snapshot now stores the expiry alongside each token; restored
+  holders use the persisted value. v1 snapshots (without expiries)
+  still load — the missing fields default to ``None`` and fall back
+  to ``now + 14h``, matching pre-0.8.2 behaviour.
+- AuthChain ``_on_msa_rotated`` also clears the cached XBL/XSTS
+  expiries so a stale persisted expiry can't leak across an MSA
+  rotation.
+
 ## [0.8.1] - 2026-05-17
 
 ### Added

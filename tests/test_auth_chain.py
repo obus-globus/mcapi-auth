@@ -148,3 +148,38 @@ async def test_to_session_returns_flat_snapshot() -> None:
     assert flat.uuid == session.uuid
     assert flat.username == session.username
     assert flat.refresh_token == "msa-ref"
+
+
+@respx.mock
+async def test_xbl_expiry_preserved_across_json_round_trip() -> None:
+    """XBL/XSTS synthetic expiries must persist through dump_json/load_json.
+
+    Regression test: previously load_json recomputed the synthetic
+    expiry as ``now + 14h``, treating a 13-hour-old cached XBL token as
+    fresh. With persisted expiries, restoration is faithful.
+    """
+    _wire_full_chain()
+    session = MinecraftSession(
+        access_token="mc-tok",
+        refresh_token="msa-ref",
+        uuid="069a79f444e94726a5befca90e38aaf5",
+        username="Notch",
+        msa_access_token="msa-acc",
+        msa_access_token_expires_at=Instant.now().add(seconds=3600),
+        minecraft_access_token_expires_at=Instant.now().add(seconds=86400),
+    )
+    chain = AuthChain.from_session(session)
+    await chain.get_xbl_token()
+    await chain.get_xsts_token()
+    await chain.get_minecraft_token()
+    original_xbl_expiry = chain.xbl_holder.expires_at_instant() if chain.xbl_holder else None
+    assert original_xbl_expiry is not None
+    blob = chain.dump_json()
+
+    restored = AuthChain.load_json(blob, app=MsaApplicationConfig.v2())
+    assert restored.xbl_holder is not None
+    # Restored expiry should match the persisted one (within 1 second
+    # of clock skew across construction).
+    restored_xbl_expiry = restored.xbl_holder.expires_at_instant()
+    delta = abs((restored_xbl_expiry - original_xbl_expiry).total("seconds"))
+    assert delta < 1.0, f"expected matching expiries, got delta={delta}s"
