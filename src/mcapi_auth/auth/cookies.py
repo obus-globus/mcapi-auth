@@ -540,6 +540,17 @@ def _extract_server_data(html: str) -> dict[str, Any] | None:
     return cast(dict[str, Any], parsed_sd)
 
 
+def _session_id_of(entry: object) -> str | None:
+    if not isinstance(entry, dict):
+        return None
+    candidate = cast(dict[str, Any], entry).get("id")
+    return candidate if isinstance(candidate, str) and candidate else None
+
+
+def _is_signed_in(entry: object) -> bool:
+    return isinstance(entry, dict) and bool(cast(dict[str, Any], entry).get("isSignedIn"))
+
+
 def _pick_session_id(server_data: dict[str, Any]) -> str | None:
     """Prefer a signed-in session; fall back to the first session."""
     sessions_raw = server_data.get("arrSessions")
@@ -547,18 +558,9 @@ def _pick_session_id(server_data: dict[str, Any]) -> str | None:
         return None
     sessions = cast(list[object], sessions_raw)
     for s in sessions:
-        if isinstance(s, dict):
-            s_typed = cast(dict[str, Any], s)
-            if s_typed.get("isSignedIn"):
-                candidate = s_typed.get("id")
-                if isinstance(candidate, str) and candidate:
-                    return candidate
-    first = sessions[0]
-    if isinstance(first, dict):
-        candidate = cast(dict[str, Any], first).get("id")
-        if isinstance(candidate, str) and candidate:
-            return candidate
-    return None
+        if _is_signed_in(s) and (sid := _session_id_of(s)) is not None:
+            return sid
+    return _session_id_of(sessions[0])
 
 
 def _build_tile_params(
