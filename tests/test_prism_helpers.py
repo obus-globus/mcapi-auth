@@ -5,9 +5,15 @@ flows; these tests pin down the behaviour of the building-block helpers
 directly so that refactors don't silently break a corner.
 """
 
+import httpx
+import pytest
+import respx
+
+from mcapi_auth._constants import LIVE_CONNECT_AUTHORIZE_URL
 from mcapi_auth.auth.cookies import (
     _build_tile_params,
     _extract_server_data,
+    _handle_prism_html_flow,
     _is_signed_in,
     _pick_session_id,
     _session_id_of,
@@ -130,14 +136,6 @@ class TestBuildTileParams:
 
     def test_returns_none_without_opid(self) -> None:
         assert _build_tile_params("contextid=AAA1", session_id="s", client_id="c") is None
-
-
-import httpx
-import pytest
-import respx
-
-from mcapi_auth._constants import LIVE_CONNECT_AUTHORIZE_URL
-from mcapi_auth.auth.cookies import _handle_prism_html_flow
 
 
 _VALID_PRISM_HTML = (

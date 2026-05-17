@@ -18,7 +18,7 @@ Mojang/Microsoft Minecraft stack":
 This is the merger of the previously separate `mcauth` and `mcapi`
 packages; see [`CHANGELOG.md`](CHANGELOG.md) for the migration notes.
 
-Requires **Python 3.13+**. Runtime dependencies: `httpx`, `pydantic >= 2`,
+Requires **Python 3.14+**. Runtime dependencies: `httpx`, `pydantic >= 2`,
 `whenever >= 0.10`.
 
 ## Installation
@@ -112,10 +112,9 @@ session = await login(storage=MemoryStorage())
 ```
 
 The default storage (`FileTokenStorage`) writes JSON to
-`$XDG_STATE_HOME/mcapi_auth/refresh_token.json` (or `~/.local/state/mcauth/...`)
-with `0600` permissions and atomic replace on save. (The on-disk path
-is kept under `mcauth/` so refresh tokens persisted by the old
-standalone `mcauth` package are picked up transparently.)
+`$XDG_STATE_HOME/mcapi_auth/refresh_token.json` (falling back to
+`~/.local/state/mcapi_auth/refresh_token.json`) with `0600` permissions
+and atomic replace on save.
 
 ## Public API endpoints
 
@@ -180,9 +179,9 @@ McApiAuthError
     └── TooManyNamesError
 ```
 
-`MCAuthError` is preserved as an alias of `McAuthError` for back-compat.
-Network-level failures (`httpx.RequestError`, `TimeoutError`) propagate
-unchanged — those aren't this library's domain.
+`MCAuthError` was an alias of `McAuthError` in 0.3.x; it was removed in
+0.4. Network-level failures (`httpx.RequestError`, `TimeoutError`)
+propagate unchanged — those aren't this library's domain.
 
 ## Reusing an `httpx.AsyncClient`
 
