@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-05-17
+
+### Changed
+
+- Default ``client_id`` for the MSA device-code / auth-code flows is
+  now ``PRISM_LAUNCHER_CLIENT_ID``
+  (``c36a9fb6-4f2a-41ff-90bd-ae7cc92031eb``). Microsoft decommissioned
+  the historical launcher client ID
+  ``00000000-402b-4cd3-a82b-c45ab2f1d3f7`` against the
+  ``/consumers/oauth2/v2.0/*`` endpoints — it now returns
+  ``AADSTS700016: Application … was not found in the directory``.
+  The constant is kept exported for callers who explicitly need it.
+
 ## [0.4.1] - 2026-05-17
 
 ### Added

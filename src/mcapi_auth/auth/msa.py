@@ -8,10 +8,10 @@ from whenever import Instant
 
 from .._constants import (
     MIN_DEVICE_CODE_POLL_INTERVAL,
-    MINECRAFT_LAUNCHER_CLIENT_ID,
     MSA_DEVICE_CODE_URL,
     MSA_SCOPE,
     MSA_TOKEN_URL,
+    PRISM_LAUNCHER_CLIENT_ID,
 )
 from .._http import acquire_client, parse_json_object_auth
 from .._models import InstantField, McModel
@@ -65,7 +65,7 @@ class _PendingDeviceCode(McModel):
 
 async def request_device_code(
     *,
-    client_id: str = MINECRAFT_LAUNCHER_CLIENT_ID,
+    client_id: str = PRISM_LAUNCHER_CLIENT_ID,
     http_client: httpx.AsyncClient | None = None,
 ) -> tuple[DeviceCodePrompt, _PendingDeviceCode]:
     """Kick off the device-code flow.
@@ -104,7 +104,7 @@ async def request_device_code(
 async def poll_for_device_code_token(
     pending: _PendingDeviceCode,
     *,
-    client_id: str = MINECRAFT_LAUNCHER_CLIENT_ID,
+    client_id: str = PRISM_LAUNCHER_CLIENT_ID,
     http_client: httpx.AsyncClient | None = None,
 ) -> MSATokens:
     """Poll Microsoft's token endpoint until the user authorizes or it expires.
@@ -148,7 +148,7 @@ async def poll_for_device_code_token(
 async def exchange_refresh_token(
     refresh_token: str,
     *,
-    client_id: str = MINECRAFT_LAUNCHER_CLIENT_ID,
+    client_id: str = PRISM_LAUNCHER_CLIENT_ID,
     http_client: httpx.AsyncClient | None = None,
 ) -> MSATokens:
     """Swap a refresh token for a fresh access + refresh pair.

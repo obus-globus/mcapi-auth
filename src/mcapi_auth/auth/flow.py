@@ -6,7 +6,7 @@ from collections.abc import Awaitable, Callable
 
 import httpx
 
-from .._constants import MINECRAFT_LAUNCHER_CLIENT_ID, MSA_SCOPE
+from .._constants import MSA_SCOPE, PRISM_LAUNCHER_CLIENT_ID
 from ..exceptions import MSAFlowError
 from .auth_code import acquire_msa_via_browser
 from .minecraft import fetch_profile, login_with_xbox
@@ -55,7 +55,7 @@ async def login(
     *,
     storage: TokenStorage | None = None,
     on_device_code: DeviceCodeCallback | None = None,
-    client_id: str = MINECRAFT_LAUNCHER_CLIENT_ID,
+    client_id: str = PRISM_LAUNCHER_CLIENT_ID,
     http_client: httpx.AsyncClient | None = None,
 ) -> MinecraftSession:
     """Run the full MSA → XBL → XSTS → Mojang flow end-to-end.
@@ -143,7 +143,7 @@ async def _acquire_msa_tokens(
 async def login_via_browser(
     *,
     storage: TokenStorage | None = None,
-    client_id: str = MINECRAFT_LAUNCHER_CLIENT_ID,
+    client_id: str = PRISM_LAUNCHER_CLIENT_ID,
     bind_host: str = "127.0.0.1",
     bind_port: int = 0,
     redirect_path: str = "/callback",
