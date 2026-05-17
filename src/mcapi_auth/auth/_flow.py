@@ -141,7 +141,6 @@ async def login_via_browser(
     bind_host: str = "127.0.0.1",
     bind_port: int = 0,
     redirect_path: str = "/callback",
-    timeout: float = 300.0,  # NOSONAR public API kwarg; do not change signature
     prompt: str | None = None,
     scope: str = MSA_SCOPE,
     open_browser: Callable[[str], object] | None = None,
@@ -171,7 +170,6 @@ async def login_via_browser(
         bind_port: TCP port to bind to. ``0`` (default) picks a free port.
         redirect_path: Path the OAuth redirect must hit
             (``/callback`` by default).
-        timeout: Seconds to wait for the redirect before raising.
         prompt: Optional ``prompt`` param to forward to the authorize
             endpoint (e.g. ``"select_account"`` to force the picker).
         scope: OAuth scope to request.
@@ -205,7 +203,6 @@ async def login_via_browser(
             bind_host=bind_host,
             bind_port=bind_port,
             redirect_path=redirect_path,
-            timeout=timeout,
             prompt=prompt,
             scope=scope,
             open_browser=open_browser,

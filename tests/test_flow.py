@@ -199,7 +199,6 @@ async def test_login_via_browser_end_to_end() -> None:
         storage=storage,
         bind_host="127.0.0.1",
         bind_port=0,
-        timeout=5.0,
         open_browser=fake_browser,
     )
     assert session.username == "Notch"

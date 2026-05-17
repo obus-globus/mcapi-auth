@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import hashlib
 from urllib.parse import parse_qs, urlparse
@@ -135,7 +136,6 @@ async def test_acquire_msa_via_browser_end_to_end() -> None:
     tokens = await acquire_msa_via_browser(
         bind_host="127.0.0.1",
         bind_port=0,
-        timeout=5.0,
         open_browser=fake_browser,
     )
     assert tokens.access_token == "acc"
@@ -166,7 +166,7 @@ async def test_acquire_msa_via_browser_rejects_mismatched_state() -> None:
 
     with pytest.raises(MSAFlowError, match="state"):
         _ = await acquire_msa_via_browser(
-            bind_host="127.0.0.1", bind_port=0, timeout=5.0, open_browser=fake_browser
+            bind_host="127.0.0.1", bind_port=0, open_browser=fake_browser
         )
 
 
@@ -191,7 +191,7 @@ async def test_acquire_msa_via_browser_surfaces_authorize_error() -> None:
 
     with pytest.raises(MSAFlowError, match="access_denied"):
         _ = await acquire_msa_via_browser(
-            bind_host="127.0.0.1", bind_port=0, timeout=5.0, open_browser=fake_browser
+            bind_host="127.0.0.1", bind_port=0, open_browser=fake_browser
         )
 
 
@@ -202,10 +202,11 @@ async def test_acquire_msa_via_browser_times_out() -> None:
     def noop(url: str) -> None:
         _ = url
 
-    with pytest.raises(MSAFlowError, match="timed out"):
-        _ = await acquire_msa_via_browser(
-            bind_host="127.0.0.1", bind_port=0, timeout=0.3, open_browser=noop
-        )
+    with pytest.raises(TimeoutError):
+        async with asyncio.timeout(0.3):
+            _ = await acquire_msa_via_browser(
+                bind_host="127.0.0.1", bind_port=0, open_browser=noop
+            )
 
 
 async def test_acquire_msa_via_browser_friendly_error_on_port_in_use() -> None:
@@ -241,7 +242,6 @@ async def test_acquire_msa_via_browser_friendly_error_on_port_in_use() -> None:
                 _ = await acquire_msa_via_browser(
                     bind_host="127.0.0.1",
                     bind_port=held_port,
-                    timeout=0.5,
                     open_browser=lambda _u: None,
                 )
         finally:
@@ -285,6 +285,6 @@ async def test_acquire_msa_via_browser_ignores_non_oauth_requests() -> None:
             json={"access_token": "ok", "refresh_token": "r", "expires_in": 3600}
         )
         tokens = await acquire_msa_via_browser(
-            bind_host="127.0.0.1", bind_port=0, timeout=5.0, open_browser=fake_browser
+            bind_host="127.0.0.1", bind_port=0, open_browser=fake_browser
         )
     assert tokens.access_token == "ok"

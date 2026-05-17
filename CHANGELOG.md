@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (breaking)
+
+- **Removed `timeout=` kwargs** from `acquire_msa_via_browser`,
+  `login_via_browser`, `login_with_cookies_msa_v1`,
+  `login_with_cookies_sisu`, and `login_with_cookies_prism`. Callers
+  that need a bounded wait should wrap the call with
+  ``async with asyncio.timeout(N):`` (and catch the plain
+  :class:`TimeoutError` instead of the previously-internal
+  ``_CallbackTimeoutError``). HTTP-level timeouts on the default
+  internal ``httpx.AsyncClient`` are fixed to ``DEFAULT_HTTP_TIMEOUT``;
+  pass your own ``http_client=`` to override.
+
 ## [0.3.0] — Merged `mcauth` + `mcapi` into `mcapi-auth`
 
 ### Changed (breaking)

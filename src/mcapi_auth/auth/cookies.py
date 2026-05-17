@@ -103,7 +103,7 @@ def _fragment_of(url: str) -> str:
 
 @asynccontextmanager
 async def _acquire_for_cookies(
-    client: httpx.AsyncClient | None, *, timeout: float  # NOSONAR public API kwarg; do not change signature
+    client: httpx.AsyncClient | None,
 ) -> AsyncGenerator[httpx.AsyncClient]:
     """Acquire an httpx client for cookie flows.
 
@@ -114,7 +114,9 @@ async def _acquire_for_cookies(
     if client is not None:
         yield client
         return
-    async with httpx.AsyncClient(follow_redirects=False, timeout=timeout) as owned:
+    async with httpx.AsyncClient(
+        follow_redirects=False, timeout=DEFAULT_HTTP_TIMEOUT
+    ) as owned:
         yield owned
 
 
@@ -222,7 +224,6 @@ async def login_with_cookies_msa_v1(
     client_id: str = MINECRAFT_LAUNCHER_V1_CLIENT_ID,
     redirect_uri: str = LIVE_CONNECT_DESKTOP_REDIRECT_URI,
     user_agent: str = DEFAULT_USER_AGENT,
-    timeout: float = DEFAULT_HTTP_TIMEOUT,  # NOSONAR public API kwarg; do not change signature
     http_client: httpx.AsyncClient | None = None,
 ) -> MSATokens:
     """Drive the Live-Connect "Java public client" flow using session cookies.
@@ -236,9 +237,10 @@ async def login_with_cookies_msa_v1(
     Returns :class:`MSATokens` carrying the access + refresh tokens.
 
     Pass ``http_client`` (e.g. ``httpx.AsyncClient(proxy="socks5://...")``)
-    to route the flow through a proxy or share a connection pool. The
-    ``timeout`` argument is only used when constructing the default
-    client; a caller-supplied client keeps its own timeout.
+    to route the flow through a proxy or share a connection pool. When
+    a caller-supplied client is given it keeps its own timeout; otherwise
+    a default :data:`DEFAULT_HTTP_TIMEOUT` is applied. Wrap the call in
+    ``async with asyncio.timeout(N):`` for an overall deadline.
     """
     pkce = create_pkce_challenge()
     params = {
@@ -251,7 +253,7 @@ async def login_with_cookies_msa_v1(
     }
     authorize_url = f"{LIVE_CONNECT_AUTHORIZE_URL}?{urlencode(params)}"
 
-    async with _acquire_for_cookies(http_client, timeout=timeout) as client:
+    async with _acquire_for_cookies(http_client) as client:
         resp = await client.get(
             authorize_url,
             headers={"Cookie": cookie_header, "User-Agent": user_agent},
@@ -304,7 +306,6 @@ async def login_with_cookies_sisu(
     tid: str = SISU_DEFAULT_TID,
     return_url: str = SISU_DEFAULT_RU,
     user_agent: str = DEFAULT_USER_AGENT,
-    timeout: float = DEFAULT_HTTP_TIMEOUT,  # NOSONAR public API kwarg; do not change signature
     http_client: httpx.AsyncClient | None = None,
 ) -> SISUTokens:
     """SISU (Xbox SSO) flow — returns XBL/XSTS tokens directly.
@@ -317,7 +318,7 @@ async def login_with_cookies_sisu(
     Pass ``http_client`` to route through a proxy or share a pool.
     """
     sisu_url = f"{SISU_CONNECT_URL}?state=login&cobrandId={cobrand_id}&tid={tid}&ru={return_url}"
-    async with _acquire_for_cookies(http_client, timeout=timeout) as client:
+    async with _acquire_for_cookies(http_client) as client:
         resp = await client.get(
             sisu_url, headers={"User-Agent": user_agent}, follow_redirects=False
         )
@@ -412,7 +413,6 @@ async def login_with_cookies_prism(
     redirect_uri: str = PRISM_LAUNCHER_REDIRECT_URI,
     scope: str = "XboxLive.SignIn XboxLive.offline_access",
     user_agent: str = DEFAULT_USER_AGENT,
-    timeout: float = DEFAULT_HTTP_TIMEOUT,  # NOSONAR public API kwarg; do not change signature
     http_client: httpx.AsyncClient | None = None,
 ) -> MSATokens:
     """Prism-Launcher-style Azure-AD consumers flow using session cookies.
@@ -433,7 +433,7 @@ async def login_with_cookies_prism(
     pkce = create_pkce_challenge()
     jar = _build_cookie_jar(cookies)
 
-    async with _acquire_for_cookies(http_client, timeout=timeout) as client:
+    async with _acquire_for_cookies(http_client) as client:
         client.cookies.update(jar)
         params = {
             "client_id": client_id,

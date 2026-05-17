@@ -161,17 +161,12 @@ _DEFAULT_SUCCESS_HTML = (
 )
 
 
-class _CallbackTimeoutError(MSAFlowError):
-    """Browser-driven auth-code flow timed out waiting for the redirect."""
-
-
 async def acquire_msa_via_browser(  # NOSONAR linear protocol stages; splitting hurts readability
     *,
     client_id: str = MINECRAFT_LAUNCHER_CLIENT_ID,
     bind_host: str = "127.0.0.1",
     bind_port: int = 0,
     redirect_path: str = "/callback",
-    timeout: float = 300.0,  # NOSONAR public API kwarg; do not change signature
     prompt: str | None = None,
     scope: str = MSA_SCOPE,
     open_browser: Callable[[str], object] | None = None,
@@ -183,8 +178,13 @@ async def acquire_msa_via_browser(  # NOSONAR linear protocol stages; splitting 
     Spins up a stdlib-only asyncio TCP listener on
     ``bind_host:bind_port`` (port ``0`` picks a free one), opens the
     user's browser to the MSA authorize URL, waits for the redirect
-    callback (up to ``timeout`` seconds), validates the CSRF ``state``,
-    and exchanges the resulting ``code`` for :class:`MSATokens`.
+    callback, validates the CSRF ``state``, and exchanges the resulting
+    ``code`` for :class:`MSATokens`.
+
+    This function does not impose its own deadline — wrap the call in
+    ``async with asyncio.timeout(N):`` if you need a bounded wait
+    (callers typically want ~300s for the browser flow). On timeout a
+    plain :class:`TimeoutError` propagates out.
 
     The redirect URI sent to Microsoft is
     ``http://{bind_host}:{actual_port}{redirect_path}`` — register that
@@ -289,13 +289,7 @@ async def acquire_msa_via_browser(  # NOSONAR linear protocol stages; splitting 
         logger.warning("failed to open browser for auth-code flow; visit manually: %s", url)
 
     try:
-        try:
-            async with asyncio.timeout(timeout):
-                params = await received
-        except TimeoutError as e:
-            raise _CallbackTimeoutError(
-                f"timed out after {timeout}s waiting for the OAuth redirect"
-            ) from e
+        params = await received
     finally:
         server.close()
         await server.wait_closed()
