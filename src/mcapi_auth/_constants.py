@@ -131,6 +131,32 @@ def resolve_client_id(name_or_id: str) -> str:
     return KNOWN_CLIENT_IDS.get(name_or_id.lower(), name_or_id)
 
 
+# Per-client redirect URI overrides for the v2 browser flow. Keyed by
+# the *resolved* client_id (not alias). Each entry pins the
+# ``(bind_host, redirect_path)`` that the Azure app registration accepts
+# — using the wrong host or path here will fail at ``oauth20_authorize``
+# with ``invalid_request: ... redirect_uri ... not valid``.
+#
+# Values intentionally omit the port so the local listener can still pick
+# a free one; the Azure app must accept ``http://{host}:*{path}``.
+KNOWN_CLIENT_REDIRECTS: Final[dict[str, tuple[str, str]]] = {
+    # LiquidLauncher / in-game LiquidBounce both register
+    # http://localhost:*/login as the reply URL on their Azure app.
+    LIQUIDLAUNCHER_CLIENT_ID: ("localhost", "/login"),
+}
+
+
+def resolve_browser_redirect(client_id: str) -> tuple[str, str] | None:
+    """Return ``(bind_host, redirect_path)`` if ``client_id`` has a known override.
+
+    Used by callers of :func:`mcapi_auth.auth.flow.login_via_browser` to
+    match the redirect URI registered on the Azure-AD app. Returns
+    ``None`` if the caller should keep the defaults (``127.0.0.1``,
+    ``/callback``).
+    """
+    return KNOWN_CLIENT_REDIRECTS.get(client_id)
+
+
 # SISU (Xbox Sign-In/Sign-Up). Returns XBL/XSTS tokens directly given
 # Microsoft browser cookies — no access/refresh token in the result.
 SISU_CONNECT_URL: Final = "https://sisu.xboxlive.com/connect/XboxLive/"
@@ -197,6 +223,7 @@ __all__ = [
     "DEFAULT_USER_AGENT",
     "EDU_CLIENT_ID",
     "KNOWN_CLIENT_IDS",
+    "KNOWN_CLIENT_REDIRECTS",
     "LIQUIDLAUNCHER_CLIENT_ID",
     "LIVE_CONNECT_AUTHORIZE_URL",
     "LIVE_CONNECT_DESKTOP_REDIRECT_URI",
@@ -243,6 +270,7 @@ __all__ = [
     "XSTS_AUTH_URL",
     "XSTS_RELYING_PARTY",
     "is_v1_client_id",
+    "resolve_browser_redirect",
     "resolve_client_id",
 ]
 

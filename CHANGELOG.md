@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.2] - 2026-05-17
+
+### Added
+
+- ``KNOWN_CLIENT_REDIRECTS`` mapping + ``resolve_browser_redirect()``
+  helper. Maps a client_id to the ``(bind_host, redirect_path)`` pair
+  that the Azure app registration expects, so callers of
+  ``login_via_browser`` can match the registered reply URI. Currently
+  pins LiquidLauncher / LiquidBounce's client to
+  ``("localhost", "/login")``.
+
 ## [0.7.1] - 2026-05-17
 
 ### Added

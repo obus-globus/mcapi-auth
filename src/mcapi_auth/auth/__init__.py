@@ -14,6 +14,7 @@ from .._constants import (
     BEDROCK_WIN32_CLIENT_ID,
     EDU_CLIENT_ID,
     KNOWN_CLIENT_IDS,
+    KNOWN_CLIENT_REDIRECTS,
     LIQUIDLAUNCHER_CLIENT_ID,
     LIVE_CONNECT_DESKTOP_REDIRECT_URI,
     MINECRAFT_LAUNCHER_CLIENT_ID,
@@ -24,6 +25,7 @@ from .._constants import (
     XBOX_APP_IOS_CLIENT_ID,
     XBOX_GAMEPASS_IOS_CLIENT_ID,
     is_v1_client_id,
+    resolve_browser_redirect,
     resolve_client_id,
 )
 from ..exceptions import (
@@ -85,6 +87,7 @@ __all__ = [
     "BEDROCK_WIN32_CLIENT_ID",
     "EDU_CLIENT_ID",
     "KNOWN_CLIENT_IDS",
+    "KNOWN_CLIENT_REDIRECTS",
     "LIQUIDLAUNCHER_CLIENT_ID",
     "LIVE_CONNECT_DESKTOP_REDIRECT_URI",
     "MINECRAFT_LAUNCHER_CLIENT_ID",
@@ -149,6 +152,7 @@ __all__ = [
     "login_with_xbox",
     "poll_for_device_code_token",
     "request_device_code",
+    "resolve_browser_redirect",
     "resolve_client_id",
     "xerr_to_exception",
 ]

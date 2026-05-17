@@ -79,6 +79,7 @@ from .auth import (
     BEDROCK_WIN32_CLIENT_ID,
     EDU_CLIENT_ID,
     KNOWN_CLIENT_IDS,
+    KNOWN_CLIENT_REDIRECTS,
     LIQUIDLAUNCHER_CLIENT_ID,
     LIVE_CONNECT_DESKTOP_REDIRECT_URI,
     MINECRAFT_LAUNCHER_CLIENT_ID,
@@ -129,6 +130,7 @@ from .auth import (
     login_with_xbox,
     poll_for_device_code_token,
     request_device_code,
+    resolve_browser_redirect,
     resolve_client_id,
 )
 from .exceptions import (
@@ -178,6 +180,7 @@ __all__ = [
     "BEDROCK_WIN32_CLIENT_ID",
     "EDU_CLIENT_ID",
     "KNOWN_CLIENT_IDS",
+    "KNOWN_CLIENT_REDIRECTS",
     "LIQUIDLAUNCHER_CLIENT_ID",
     "LIVE_CONNECT_DESKTOP_REDIRECT_URI",
     "MINECRAFT_LAUNCHER_CLIENT_ID",
@@ -295,6 +298,7 @@ __all__ = [
     "poll_for_device_code_token",
     "request_device_code",
     "reset_skin",
+    "resolve_browser_redirect",
     "resolve_client_id",
     "xerr_to_exception",
 ]
