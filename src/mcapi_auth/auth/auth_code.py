@@ -39,6 +39,7 @@ import httpx
 
 from .._constants import (
     LIVE_CONNECT_AUTHORIZE_URL,
+    LIVE_CONNECT_DESKTOP_REDIRECT_URI,
     LIVE_CONNECT_SCOPE_MBI_SSL,
     LIVE_CONNECT_TOKEN_URL,
     MINECRAFT_LAUNCHER_V1_CLIENT_ID,
@@ -345,38 +346,127 @@ async def acquire_msa_via_browser(  # NOSONAR linear protocol stages; splitting 
 async def acquire_msa_via_browser_v1(
     *,
     client_id: str = MINECRAFT_LAUNCHER_V1_CLIENT_ID,
-    bind_host: str = "127.0.0.1",
-    bind_port: int = 0,
-    redirect_path: str = "/callback",
     scope: str = LIVE_CONNECT_SCOPE_MBI_SSL,
+    redirect_uri: str = LIVE_CONNECT_DESKTOP_REDIRECT_URI,
     open_browser: Callable[[str], None | Awaitable[None]] | None = None,
-    success_html: str = _DEFAULT_SUCCESS_HTML,
+    prompt_for_code: Callable[[str], str | Awaitable[str]] | None = None,
     http_client: httpx.AsyncClient | None = None,
 ) -> MSATokens:
     """Run the **legacy Live-Connect v1** auth-code flow via a browser.
 
-    Same listener / redirect plumbing as
-    :func:`acquire_msa_via_browser`, but targets the older
-    ``login.live.com/oauth20_*.srf`` endpoints with the compressed
-    Minecraft Launcher client_id (``00000000402b5328`` by default) and
-    the ``MBI_SSL`` scope. PKCE is not used — v1 silently ignores it
-    when present and many of its quirks pre-date PKCE entirely.
+    Unlike the v2 ``acquire_msa_via_browser`` this does **not** spin up
+    a localhost HTTP listener — the ``00000000402b5328`` client_id is
+    registered against the OOB desktop redirect
+    (``https://login.live.com/oauth20_desktop.srf``) only, and
+    Microsoft will reject any other ``redirect_uri`` with::
 
-    Use this when device-code or v2 auth-code flows are unavailable
-    (e.g. a tenant restriction on the consumers endpoint, or you want
-    parity with what the official Minecraft Launcher historically did).
+        invalid_request: The provided value for the input parameter
+        'redirect_uri' is not valid.
+
+    Instead, after the user completes sign-in the browser lands on a
+    page whose URL contains ``?code=...&state=...``. The user copies
+    that URL (or just the ``code=`` value) and pastes it back into the
+    CLI. PKCE is not used.
+
+    Args:
+        client_id: MSA client_id (default ``00000000402b5328``).
+        scope: OAuth scope (default ``service::user.auth.xboxlive.com::MBI_SSL``).
+        redirect_uri: OOB redirect URI. Defaults to the desktop URI;
+            you can override if you have another registered redirect.
+        open_browser: Optional callback invoked with the authorize URL
+            before falling back to :func:`webbrowser.open`.
+        prompt_for_code: Async/sync callable taking a help message and
+            returning either the bare authorization code or the full
+            redirected URL. Defaults to a blocking ``input()`` on a
+            thread.
+        http_client: Optional shared :class:`httpx.AsyncClient`.
+
+    Returns:
+        The exchanged :class:`MSATokens`.
+
+    Raises:
+        MSAFlowError: if the redirect page reports an error, the
+            ``state`` doesn't match, or the token exchange fails.
     """
-    return await acquire_msa_via_browser(
+    state = secrets.token_urlsafe(24)
+    authorize_url = build_authorize_url(
+        redirect_uri=redirect_uri,
+        pkce=None,
+        state=state,
         client_id=client_id,
-        bind_host=bind_host,
-        bind_port=bind_port,
-        redirect_path=redirect_path,
-        prompt=None,
         scope=scope,
-        open_browser=open_browser,
-        success_html=success_html,
-        http_client=http_client,
         authorize_url=LIVE_CONNECT_AUTHORIZE_URL,
-        token_url=LIVE_CONNECT_TOKEN_URL,
-        use_pkce=False,
     )
+
+    if open_browser is not None:
+        result = open_browser(authorize_url)
+        if isinstance(result, Awaitable):
+            await result
+    else:
+        with contextlib.suppress(Exception):
+            webbrowser.open(authorize_url)
+
+    if prompt_for_code is None:
+
+        async def _default_prompt(msg: str) -> str:
+            return await asyncio.to_thread(input, msg)
+
+        prompt_for_code = _default_prompt
+
+    help_msg = (
+        "After signing in, your browser will land on a page whose URL\n"
+        "starts with " + redirect_uri + "?code=... — paste that URL\n"
+        "(or just the code= value) here: "
+    )
+    raw = prompt_for_code(help_msg)
+    if isinstance(raw, Awaitable):
+        raw = await raw
+    code, returned_state = _parse_oob_response(raw.strip())
+    if returned_state is not None and returned_state != state:
+        raise MSAFlowError(f"OAuth state mismatch: expected {state!r}, got {returned_state!r}")
+
+    return await exchange_authorization_code(
+        redirect_uri=redirect_uri,
+        code=code,
+        pkce_verifier=None,
+        client_id=client_id,
+        token_url=LIVE_CONNECT_TOKEN_URL,
+        http_client=http_client,
+    )
+
+
+def _parse_oob_response(pasted: str) -> tuple[str, str | None]:
+    """Parse a pasted OOB-redirect URL or bare code.
+
+    Accepts:
+
+    * A bare authorization code (any string without ``?``, ``=``, or
+      ``&``) — returned with ``state=None``.
+    * A full URL like ``https://login.live.com/oauth20_desktop.srf?code=...&state=...``.
+    * A bare query string like ``code=...&state=...``.
+    * An ``error=...&error_description=...`` URL / query, which raises
+      :class:`MSAFlowError`.
+
+    Returns ``(code, state_or_none)``.
+    """
+    from urllib.parse import parse_qs, urlparse
+
+    if "=" not in pasted and "?" not in pasted and "&" not in pasted:
+        return pasted, None
+
+    query = urlparse(pasted).query or pasted.split("?", 1)[1] if "?" in pasted else pasted
+    parsed = parse_qs(query, keep_blank_values=False)
+
+    if "error" in parsed:
+        err = parsed["error"][0]
+        desc = parsed.get("error_description", [""])[0]
+        raise MSAFlowError(f"authorize endpoint returned error: {err}: {desc}")
+
+    if "code" not in parsed:
+        raise MSAFlowError(
+            "could not find 'code' in pasted response — make sure you "
+            "copied the full redirected URL after signing in"
+        )
+    code = parsed["code"][0]
+    state = parsed["state"][0] if "state" in parsed else None
+    return code, state

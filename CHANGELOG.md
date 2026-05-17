@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-05-17
+
+### Changed
+
+- ``acquire_msa_via_browser_v1`` and ``login_via_browser_v1`` no
+  longer try to use a localhost-redirect listener. The compressed
+  Live-Connect client_id ``00000000402b5328`` is only registered
+  against the OOB ``oauth20_desktop.srf`` redirect, so an arbitrary
+  ``http://127.0.0.1:<port>/callback`` URI is rejected by Microsoft
+  with ``invalid_request: The provided value for the input parameter
+  'redirect_uri' is not valid``. The flow is now **paste-back**:
+  open the browser, sign in, and paste the redirected URL (or just
+  the ``code=`` value) back into the terminal. New kwargs:
+  ``redirect_uri``, ``prompt_for_code``. Removed obsolete kwargs:
+  ``bind_host``, ``bind_port``, ``redirect_path``, ``success_html``
+  on the v1 helpers.
+
+### Added
+
+- ``_parse_oob_response`` (internal) accepts a bare authorization
+  code, a full redirected URL, or a bare query string, and surfaces
+  ``error=`` responses via :class:`MSAFlowError`.
+
 ## [0.6.0] - 2026-05-17
 
 ### Added

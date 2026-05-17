@@ -7,6 +7,7 @@ from collections.abc import Awaitable, Callable
 import httpx
 
 from .._constants import (
+    LIVE_CONNECT_DESKTOP_REDIRECT_URI,
     LIVE_CONNECT_SCOPE_MBI_SSL,
     LIVE_CONNECT_TOKEN_URL,
     MINECRAFT_LAUNCHER_V1_CLIENT_ID,
@@ -245,11 +246,10 @@ async def login_via_browser_v1(
     *,
     storage: TokenStorage | None = None,
     client_id: str = MINECRAFT_LAUNCHER_V1_CLIENT_ID,
-    bind_host: str = "127.0.0.1",
-    bind_port: int = 0,
-    redirect_path: str = "/callback",
+    redirect_uri: str = LIVE_CONNECT_DESKTOP_REDIRECT_URI,
     scope: str = LIVE_CONNECT_SCOPE_MBI_SSL,
     open_browser: Callable[[str], None | Awaitable[None]] | None = None,
+    prompt_for_code: Callable[[str], str | Awaitable[str]] | None = None,
     http_client: httpx.AsyncClient | None = None,
 ) -> MinecraftSession:
     """Run the full auth chain via the **legacy Live-Connect v1** flow.
@@ -261,9 +261,16 @@ async def login_via_browser_v1(
     your account / tenant or you specifically want parity with the
     historical launcher behaviour.
 
+    Unlike the v2 browser flow this uses an **out-of-band paste-back**
+    UX: the ``00000000402b5328`` client_id is registered only against
+    the OOB ``oauth20_desktop.srf`` redirect, so we open the browser,
+    let the user complete sign-in, and then prompt them to paste the
+    resulting redirected URL back into the terminal.
+
     Refresh-token reuse honours the v1 endpoint and scope.
 
-    See :func:`login_via_browser` for parameter semantics.
+    See :func:`acquire_msa_via_browser_v1` for parameter semantics
+    (``redirect_uri``, ``prompt_for_code``, ``open_browser``).
     """
     actual_storage: TokenStorage = storage if storage is not None else NullTokenStorage()
 
@@ -288,11 +295,10 @@ async def login_via_browser_v1(
     if msa_tokens is None:
         msa_tokens = await acquire_msa_via_browser_v1(
             client_id=client_id,
-            bind_host=bind_host,
-            bind_port=bind_port,
-            redirect_path=redirect_path,
+            redirect_uri=redirect_uri,
             scope=scope,
             open_browser=open_browser,
+            prompt_for_code=prompt_for_code,
             http_client=http_client,
         )
 
