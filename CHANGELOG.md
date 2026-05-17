@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-05-17
+
+### Added
+
+- ``RateLimitedError.rate_limit_result`` — the value of Mojang's
+  ``X-Minecraft-Rate-Limit-Result`` response header (observed values:
+  ``"OVER_LIMIT"`` on 429, ``"UNDER_LIMIT"`` on success). Populated by
+  every 429 path in ``mcapi_auth.api.profile`` and
+  ``mcapi_auth.api.account``. The header is essentially redundant with
+  the HTTP status code in practice but is now surfaced for logging /
+  round-tripping.
+
 ## [0.4.0] - 2026-05-17
 
 ### Changed (breaking)

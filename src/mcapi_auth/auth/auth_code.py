@@ -23,7 +23,6 @@ For the *full* MS → Xbox → Mojang chain returning a
 ``MinecraftSession``, see :func:`mcapi_auth.login_via_browser`.
 """
 
-
 import asyncio
 import base64
 import contextlib
@@ -247,7 +246,7 @@ async def acquire_msa_via_browser(  # NOSONAR linear protocol stages; splitting 
             await writer.drain()
             if is_oauth_callback and not received.done():
                 received.set_result(params)
-        except (asyncio.CancelledError, ConnectionError):
+        except asyncio.CancelledError, ConnectionError:
             raise
         except Exception as e:
             if not received.done():

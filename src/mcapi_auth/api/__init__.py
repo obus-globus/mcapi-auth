@@ -5,7 +5,6 @@ need one). Top-level convenience names are also re-exported from the
 :mod:`mcapi_auth` namespace.
 """
 
-
 from .._constants import (
     DEFAULT_API_USER_AGENT,
     DEFAULT_HTTP_TIMEOUT,

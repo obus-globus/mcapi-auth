@@ -8,7 +8,6 @@ Third-party services (axochat, custom auth gateways, etc.) reuse the
 same dance, which is why this primitive belongs in an auth library.
 """
 
-
 from dataclasses import dataclass
 
 import httpx

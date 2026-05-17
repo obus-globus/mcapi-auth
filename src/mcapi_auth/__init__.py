@@ -26,7 +26,6 @@ For finer-grained access, import directly from
 :mod:`mcapi_auth.auth` / :mod:`mcapi_auth.api`.
 """
 
-
 import logging
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as _pkg_version

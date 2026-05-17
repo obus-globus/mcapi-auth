@@ -8,7 +8,6 @@ Only the refresh token is persisted — short-lived access tokens are
 re-derived on every call.
 """
 
-
 import asyncio
 import contextlib
 import json

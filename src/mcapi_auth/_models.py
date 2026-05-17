@@ -12,7 +12,6 @@ in a model validator, the dunder ``__init__`` keeps its natural Python
 field names while we still parse Mojang's camelCase wire format.
 """
 
-
 from typing import Annotated, Any, ClassVar
 
 from pydantic import BaseModel, ConfigDict, PlainSerializer, PlainValidator, model_validator

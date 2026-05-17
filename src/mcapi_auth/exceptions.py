@@ -13,7 +13,6 @@ Network-level failures propagate as :class:`httpx.RequestError`
 unchanged — those are not our domain.
 """
 
-
 from ._constants import (
     XERR_CHILD_ACCOUNT,
     XERR_NO_XBOX_ACCOUNT,
@@ -179,11 +178,25 @@ class RateLimitedError(McApiError):
 
     ``retry_after`` is parsed from the ``Retry-After`` response header
     when present.
+
+    ``rate_limit_result`` carries the value of Mojang's
+    ``X-Minecraft-Rate-Limit-Result`` header (observed values:
+    ``"OVER_LIMIT"`` on a 429, ``"UNDER_LIMIT"`` on success). The
+    header is purely informational — it tracks the response status
+    code one-to-one in practice — but is exposed for logging and
+    round-tripping.
     """
 
-    def __init__(self, message: str = "rate limited", *, retry_after: float | None = None) -> None:
+    def __init__(
+        self,
+        message: str = "rate limited",
+        *,
+        retry_after: float | None = None,
+        rate_limit_result: str | None = None,
+    ) -> None:
         super().__init__(message)
         self.retry_after: float | None = retry_after
+        self.rate_limit_result: str | None = rate_limit_result
 
 
 class InvalidProfileError(McApiError):

@@ -2,7 +2,6 @@
 Uses respx to mock httpx at the transport layer.
 """
 
-
 import inspect
 
 import httpx

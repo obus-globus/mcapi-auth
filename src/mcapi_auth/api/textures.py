@@ -18,7 +18,6 @@ rewrite the scheme themselves; the texture host (``textures.minecraft.net``)
 does support TLS.
 """
 
-
 import base64
 import json
 from enum import StrEnum
@@ -123,7 +122,10 @@ def decode_texture_property(value: str) -> DecodedTextures:
     try:
         raw = base64.b64decode(value, validate=False)
         decoded: Any = json.loads(raw.decode("utf-8"))
-    except (ValueError, UnicodeDecodeError) as e:  # NOSONAR intentional: documents distinct error sources
+    except (
+        ValueError,
+        UnicodeDecodeError,
+    ) as e:  # NOSONAR intentional: documents distinct error sources
         raise InvalidProfileError(f"texture property is not valid base64+JSON: {e}") from e
     if not isinstance(decoded, dict):
         raise InvalidProfileError(

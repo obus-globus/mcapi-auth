@@ -5,8 +5,7 @@ The endpoints are rate-limited (Mojang's documented number is ~600 req per
 A 429 response surfaces as :class:`mcapi_auth.RateLimitedError`.
 """
 
-
-from typing import Any, ClassVar, cast
+from typing import Any, ClassVar, NoReturn, cast
 
 import httpx
 from pydantic import ValidationError
@@ -41,6 +40,21 @@ def _retry_after(response: httpx.Response) -> float | None:
         return float(raw)
     except ValueError:
         return None
+
+
+def _rate_limit_result(response: httpx.Response) -> str | None:
+    """Read Mojang's ``X-Minecraft-Rate-Limit-Result`` header (if present).
+
+    Observed values in the wild: ``UNDER_LIMIT`` on 2xx, ``OVER_LIMIT`` on 429.
+    """
+    return response.headers.get("X-Minecraft-Rate-Limit-Result")
+
+
+def _raise_rate_limited(response: httpx.Response) -> NoReturn:
+    raise RateLimitedError(
+        retry_after=_retry_after(response),
+        rate_limit_result=_rate_limit_result(response),
+    )
 
 
 class NameLookupResult(McModel):
@@ -108,7 +122,7 @@ async def get_uuid_by_name(
     if r.status_code == 400:
         raise BadRequestError(f"invalid username {name!r}: {r.text}")
     if r.status_code == 429:
-        raise RateLimitedError(retry_after=_retry_after(r))
+        _raise_rate_limited(r)
     raise HttpError(r.status_code, r.text, url=str(r.request.url))
 
 
@@ -157,7 +171,7 @@ async def get_uuids_by_names(
     if r.status_code == 400:
         raise BadRequestError(f"bulk lookup rejected: {r.text}")
     if r.status_code == 429:
-        raise RateLimitedError(retry_after=_retry_after(r))
+        _raise_rate_limited(r)
     raise HttpError(r.status_code, r.text, url=str(r.request.url))
 
 
@@ -190,5 +204,5 @@ async def get_profile_by_uuid(
     if r.status_code == 400:
         raise BadRequestError(f"invalid UUID {uuid!r}")
     if r.status_code == 429:
-        raise RateLimitedError(retry_after=_retry_after(r))
+        _raise_rate_limited(r)
     raise HttpError(r.status_code, r.text, url=str(r.request.url))

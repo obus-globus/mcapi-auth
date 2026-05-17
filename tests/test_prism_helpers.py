@@ -139,7 +139,7 @@ class TestBuildTileParams:
 
 
 _VALID_PRISM_HTML = (
-    '<script>var ServerData = '
+    "<script>var ServerData = "
     '{"arrSessions":[{"id":"sess-1","isSignedIn":true}]};</script>'
     "contextid=AAA1&opid=BBB2&bk=1700000000&uaid=cafe"
 )
@@ -151,7 +151,10 @@ class TestHandlePrismHtmlFlow:
     async def test_returns_code_from_302_redirect(self) -> None:
         respx.get(LIVE_CONNECT_AUTHORIZE_URL).mock(
             return_value=httpx.Response(
-                302, headers={"location": "https://login.live.com/oauth20_desktop.srf?code=M.R3_BAY.abc"}
+                302,
+                headers={
+                    "location": "https://login.live.com/oauth20_desktop.srf?code=M.R3_BAY.abc"
+                },
             )
         )
         async with httpx.AsyncClient() as client:

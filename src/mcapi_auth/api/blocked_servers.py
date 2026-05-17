@@ -26,7 +26,6 @@ This module provides:
   given host would be refused by the vanilla client.
 """
 
-
 import hashlib
 from collections.abc import Iterable
 

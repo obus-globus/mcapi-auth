@@ -19,7 +19,6 @@ server jar, asset-index URL) and keeps the raw dict around as ``.raw`` for
 anything else.
 """
 
-
 from typing import Any, ClassVar
 
 import httpx

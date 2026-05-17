@@ -54,11 +54,22 @@ async def test_get_uuid_by_name_400_raises_bad_request() -> None:
 @respx.mock
 async def test_get_uuid_by_name_429_surfaces_retry_after() -> None:
     respx.get(f"{USERNAME_TO_UUID_URL}/Notch").respond(
-        status_code=429, headers={"Retry-After": "42"}
+        status_code=429,
+        headers={"Retry-After": "42", "X-Minecraft-Rate-Limit-Result": "OVER_LIMIT"},
     )
     with pytest.raises(RateLimitedError) as info:
         _ = await get_uuid_by_name("Notch")
     assert info.value.retry_after == 42.0
+    assert info.value.rate_limit_result == "OVER_LIMIT"
+
+
+@respx.mock
+async def test_get_uuid_by_name_429_without_rate_limit_header() -> None:
+    respx.get(f"{USERNAME_TO_UUID_URL}/Notch").respond(status_code=429)
+    with pytest.raises(RateLimitedError) as info:
+        _ = await get_uuid_by_name("Notch")
+    assert info.value.retry_after is None
+    assert info.value.rate_limit_result is None
 
 
 @respx.mock

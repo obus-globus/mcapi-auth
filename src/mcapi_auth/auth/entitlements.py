@@ -5,7 +5,6 @@ account without Java, but it doesn't tell you *why* — entitlements
 do.
 """
 
-
 from typing import Any, cast
 
 import httpx

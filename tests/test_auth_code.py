@@ -202,9 +202,7 @@ async def test_acquire_msa_via_browser_times_out() -> None:
 
     with pytest.raises(TimeoutError):
         async with asyncio.timeout(0.3):
-            _ = await acquire_msa_via_browser(
-                bind_host="127.0.0.1", bind_port=0, open_browser=noop
-            )
+            _ = await acquire_msa_via_browser(bind_host="127.0.0.1", bind_port=0, open_browser=noop)
 
 
 async def test_acquire_msa_via_browser_friendly_error_on_port_in_use() -> None:

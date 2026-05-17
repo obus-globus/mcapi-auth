@@ -9,7 +9,6 @@ mapped to :mod:`mcapi_auth.exceptions` subclasses by status code, so callers
 can ``except NameTakenError`` rather than parsing strings.
 """
 
-
 from enum import StrEnum
 from typing import Any, ClassVar, Literal
 
@@ -137,7 +136,10 @@ def _raise_for_authed_status(r: httpx.Response) -> None:
                 retry = float(ra)
             except ValueError:
                 retry = None
-        raise RateLimitedError(retry_after=retry)
+        raise RateLimitedError(
+            retry_after=retry,
+            rate_limit_result=r.headers.get("X-Minecraft-Rate-Limit-Result"),
+        )
     if r.status_code >= 400:
         raise HttpError(r.status_code, r.text, url=str(r.request.url))
 

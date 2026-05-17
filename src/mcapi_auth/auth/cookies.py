@@ -36,7 +36,6 @@ the helpers convert.
    credential theft.
 """
 
-
 import base64
 import html as html_mod
 import json
@@ -112,9 +111,7 @@ async def _acquire_for_cookies(
     if client is not None:
         yield client
         return
-    async with httpx.AsyncClient(
-        follow_redirects=False, timeout=DEFAULT_HTTP_TIMEOUT
-    ) as owned:
+    async with httpx.AsyncClient(follow_redirects=False, timeout=DEFAULT_HTTP_TIMEOUT) as owned:
         yield owned
 
 
@@ -355,7 +352,11 @@ async def login_with_cookies_sisu(
     try:
         decoded = base64.b64decode(token_b64 + "==").decode("utf-8")
         parsed_obj: object = json.loads(decoded)
-    except (ValueError, UnicodeDecodeError, json.JSONDecodeError) as e:  # NOSONAR intentional: documents distinct error sources
+    except (
+        ValueError,
+        UnicodeDecodeError,
+        json.JSONDecodeError,
+    ) as e:  # NOSONAR intentional: documents distinct error sources
         raise CookieAuthError(f"SISU 'accessToken' fragment is not valid b64+JSON: {e}") from e
     if not isinstance(parsed_obj, list):
         raise CookieAuthError(f"SISU returned non-array payload: {type(parsed_obj).__name__}")
@@ -370,7 +371,9 @@ def extract_sisu_token(sisu: SISUTokens, relying_party: str) -> XboxLiveToken:
     return token
 
 
-def _parse_sisu_array(entries: list[object]) -> SISUTokens:  # NOSONAR linear protocol stages; splitting hurts readability
+def _parse_sisu_array(
+    entries: list[object],
+) -> SISUTokens:  # NOSONAR linear protocol stages; splitting hurts readability
     out: dict[str, XboxLiveToken] = {}
     for entry in entries:
         if not isinstance(entry, dict):
@@ -516,8 +519,12 @@ def _code_from_redirect(location: str) -> str | None:
 _FORM_URLENCODED = "application/x-www-form-urlencoded"
 
 
-_SERVER_DATA_RE = re.compile(r"var ServerData\s*=\s*({.*?});\s*</script>", re.DOTALL)  # NOSONAR reluctant needed: matched JSON has nested } chars
-_CONSENT_SERVER_DATA_RE = re.compile(r"ServerData\s*=\s*(\{.+?\});", re.DOTALL)  # NOSONAR reluctant needed: matched JSON has nested } chars
+_SERVER_DATA_RE = re.compile(
+    r"var ServerData\s*=\s*({.*?});\s*</script>", re.DOTALL
+)  # NOSONAR reluctant needed: matched JSON has nested } chars
+_CONSENT_SERVER_DATA_RE = re.compile(
+    r"ServerData\s*=\s*(\{.+?\});", re.DOTALL
+)  # NOSONAR reluctant needed: matched JSON has nested } chars
 _FORM_ACTION_RE = re.compile(r'action="([^"]+)"')
 _FORM_INPUT_RE = re.compile(r'<input[^>]*name="([^"]+)"[^>]*value="([^"]*)"')
 _CTX_RE = re.compile(r"contextid[=:]([A-F0-9]+)", re.IGNORECASE)
@@ -563,9 +570,7 @@ def _pick_session_id(server_data: dict[str, Any]) -> str | None:
     return _session_id_of(sessions[0])
 
 
-def _build_tile_params(
-    html: str, *, session_id: str, client_id: str
-) -> dict[str, str] | None:
+def _build_tile_params(html: str, *, session_id: str, client_id: str) -> dict[str, str] | None:
     """Pull contextid / opid / bk / uaid from the page and assemble the tile URL params."""
     ctx_match = _CTX_RE.search(html)
     opid_match = _OPID_RE.search(html)
@@ -687,7 +692,10 @@ async def _handle_prism_interstitial(  # NOSONAR linear protocol stages; splitti
     try:
         decoder = json.JSONDecoder()
         sd_obj, _idx = decoder.raw_decode(sd_match.group(1))
-    except (json.JSONDecodeError, ValueError):  # NOSONAR intentional: documents distinct error sources
+    except (
+        json.JSONDecodeError,
+        ValueError,
+    ):  # NOSONAR intentional: documents distinct error sources
         return None
     if not isinstance(sd_obj, dict):
         return None

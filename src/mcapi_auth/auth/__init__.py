@@ -6,7 +6,6 @@ entry points (:func:`login`, :func:`login_via_browser`,
 :mod:`mcapi_auth` namespace for convenience.
 """
 
-
 from .._constants import (
     LIVE_CONNECT_DESKTOP_REDIRECT_URI,
     MINECRAFT_LAUNCHER_CLIENT_ID,

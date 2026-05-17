@@ -3,7 +3,6 @@ Everything that might shift if Microsoft / Mojang move their APIs around
 is collected here so refactors stay tight to one file.
 """
 
-
 from typing import Final
 
 # Public Minecraft Launcher client_id. Every open-source launcher

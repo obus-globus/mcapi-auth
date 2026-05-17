@@ -10,7 +10,6 @@ caller's client if they passed one (and does NOT close it), otherwise it
 creates and closes one for them.
 """
 
-
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Any, cast

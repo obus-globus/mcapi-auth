@@ -8,7 +8,6 @@ you can plug in any session-like object (a custom dataclass, a Pydantic
 model, …) as long as it carries the token in the same attribute name.
 """
 
-
 from typing import Protocol, runtime_checkable
 
 
