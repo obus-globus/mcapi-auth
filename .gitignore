@@ -18,3 +18,4 @@ node_modules/
 sonar-project.properties
 coverage.xml
 site/
+tests-e2e/storage_state.json

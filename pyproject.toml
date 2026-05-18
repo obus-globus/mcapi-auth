@@ -55,6 +55,10 @@ docs = [
     "mkdocs-material>=9.5",
     "mkdocstrings[python]>=0.27",
 ]
+e2e = [
+    "playwright>=1.49",
+    "pytest-playwright>=0.7",
+]
 
 [tool.ruff]
 line-length = 100
@@ -67,6 +71,9 @@ ignore = ["E501"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+markers = [
+    "e2e: end-to-end tests requiring a real Microsoft account and a logged-in Playwright session",
+]
 
 [tool.coverage.run]
 source = ["src/mcapi_auth"]
