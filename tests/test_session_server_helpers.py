@@ -72,9 +72,7 @@ def test_compute_server_id_hash_uses_sha1_chain() -> None:
     der = b"\xde\xad\xbe\xef" * 32
     out = compute_server_id_hash(server_id, shared, der)
     # Round-trip: redo the hash and verify our signed-hex matches
-    raw = hashlib.sha1(
-        server_id.encode("ascii") + shared + der, usedforsecurity=False
-    ).digest()
+    raw = hashlib.sha1(server_id.encode("ascii") + shared + der, usedforsecurity=False).digest()
     n = int.from_bytes(raw, byteorder="big", signed=True)
     expected = ("-" + format(-n, "x")) if n < 0 else format(n, "x")
     assert out == expected
