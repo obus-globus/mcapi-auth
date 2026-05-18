@@ -13,7 +13,8 @@ token on every cold start.
 
 Typical lifecycle::
 
-    chain = await AuthChain.login(app=MsaApplicationConfig.from_known("prism"))
+    # Default flow="device_code_v1" + the official MC launcher v1 client_id.
+    chain = await AuthChain.login()
     chain.on_change(lambda old, new: state.save(chain.dump_json()))
 
     while running:
@@ -21,7 +22,7 @@ Typical lifecycle::
         await do_stuff(mc.access_token)
 
     # later, in another process:
-    chain = AuthChain.load_json(state.load(), app=...)
+    chain = AuthChain.load_json(state.load(), app=MsaApplicationConfig.v1_launcher())
     mc = await chain.get_minecraft_token()
 """
 

@@ -307,7 +307,13 @@ holders are invalidated automatically on MSA rotation.
 ```python
 from mcapi_auth import AuthChain, MsaApplicationConfig
 
-chain = await AuthChain.login(app=MsaApplicationConfig.from_known("prism"))
+# Default: v1 device-code flow with the official MC launcher client_id.
+chain = await AuthChain.login()
+
+# For v2 / Azure-AD instead:
+# chain = await AuthChain.login(
+#     flow="device_code_v2", app=MsaApplicationConfig.from_known("prism")
+# )
 
 # Persist on every rotation:
 chain.on_change(lambda stage, _old, _new: state.save(chain.dump_json()))
@@ -321,7 +327,7 @@ Restoring across restarts retains XBL+XSTS so you don't re-derive the
 chain on cold start:
 
 ```python
-chain = AuthChain.load_json(state.load(), app=MsaApplicationConfig.from_known("prism"))
+chain = AuthChain.load_json(state.load(), app=MsaApplicationConfig.v1_launcher())
 mc = await chain.get_minecraft_token()   # uses cached values when fresh
 ```
 

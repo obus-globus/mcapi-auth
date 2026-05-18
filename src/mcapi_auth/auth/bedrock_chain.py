@@ -257,8 +257,9 @@ class BedrockAuthManager:
         )
         if actual_app.is_v1:
             raise ValueError(
-                "BedrockAuthManager.login() doesn't support v1 client_ids "
-                "(device-code endpoint is v2 only). Use a v2 MsaApplicationConfig."
+                "BedrockAuthManager.login() targets the v2 Azure-AD endpoints "
+                "(the Bedrock client_ids are registered there); pass a v2 "
+                "MsaApplicationConfig, not v1_launcher()."
             )
         prompt, pending = await request_device_code(
             client_id=actual_app.client_id, http_client=http_client

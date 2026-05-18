@@ -406,7 +406,7 @@ def _parse_sisu_array(
     return SISUTokens(tokens_by_relying_party=out)
 
 
-# -- Flow 3: Prism Launcher (Azure-AD consumers) -----------------------------
+# -- Flow 3: MSA v2 + loopback redirect (Azure-AD consumers) -----------------
 
 
 async def login_with_cookies_msa_v2_loopback(
