@@ -254,7 +254,7 @@ captured Microsoft session without typing a password:
 from mcapi_auth import (
     login_with_cookies_msa_v1,
     login_with_cookies_sisu,
-    login_with_cookies_prism,
+    login_with_cookies_msa_v2_loopback,
     CookieAuthError,
     BrowserCookie,
 )
@@ -266,7 +266,7 @@ tokens = await login_with_cookies_msa_v1("MSPAuth=...; MSPProf=...")
 sisu = await login_with_cookies_sisu("MSPAuth=...; MSPProf=...")
 
 # Flow 3 — Prism Launcher (Azure-AD consumers): accepts structured cookies
-tokens = await login_with_cookies_prism([
+tokens = await login_with_cookies_msa_v2_loopback([
     BrowserCookie(name="MSPAuth", value="...", domain=".live.com"),
     BrowserCookie(name="MSPProf", value="...", domain=".live.com"),
 ])

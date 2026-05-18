@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-05-18
+
+### Changed
+
+- **Breaking: renamed ``login_with_cookies_prism`` →
+  ``login_with_cookies_msa_v2_loopback``.** The function isn't tied to
+  PrismLauncher — it implements the generic MSA v2 client + loopback
+  redirect flow on the Azure-AD ``consumers`` endpoints, and works for
+  any v2 client_id with a ``http://127.0.0.1:*`` redirect URI registered
+  (currently Prism and LiquidLauncher). The new name matches the
+  existing ``login_with_cookies_msa_v1`` for symmetry. No deprecation
+  alias is shipped; update callers directly.
+- Internal helpers ``_exchange_prism_code``, ``_handle_prism_html_flow``,
+  ``_handle_prism_interstitial`` were correspondingly renamed to
+  ``_exchange_v2_loopback_code``, ``_handle_v2_loopback_html_flow``,
+  ``_handle_v2_loopback_interstitial``.
+
+### Added
+
+- Cookie-flow ``client_id`` matrix tests: 12 parametrised tests
+  verifying every known v1 / v2 client_id is threaded into the
+  underlying OAuth ``client_id`` parameter verbatim, in both the
+  authorize URL query and the token-exchange POST body. Catches
+  regressions where the helper might lower-case a hex id, drop dashes,
+  or substitute its default.
+
 ## [0.13.0] - 2026-05-18
 
 ### Added

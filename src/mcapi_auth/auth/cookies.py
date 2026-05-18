@@ -13,11 +13,13 @@ Three options ship, in order of preference:
    public-client flow used by the official Minecraft Launcher.
    Returns full :class:`~mcapi_auth.auth.msa.MSATokens` (access + refresh +
    expiry). Preferred whenever it works.
-2. :func:`login_with_cookies_prism` — Azure-AD consumers flow using
-   PrismLauncher's client_id. More involved (Microsoft sometimes
-   serves an interstitial consent page that has to be auto-clicked)
-   but works when the v1 flow is blocked by FIDO / passkey
-   enforcement.
+2. :func:`login_with_cookies_msa_v2_loopback` — Azure-AD consumers
+   flow using a v2 client_id with a loopback redirect URI (the
+   approach pioneered by PrismLauncher; defaults to its client_id
+   but works for any v2 app with a loopback URL registered, e.g.
+   LiquidLauncher). More involved (Microsoft sometimes serves an
+   interstitial consent page that has to be auto-clicked) but
+   works when the v1 flow is blocked by FIDO / passkey enforcement.
 3. :func:`login_with_cookies_sisu` — Xbox SISU SSO. Returns *only*
    XBL/XSTS tokens (no MS access/refresh token). Use as a last-resort
    fallback; you'll need to re-run SISU each time the XBL token
@@ -77,7 +79,7 @@ __all__ = [
     "cookies_to_header",
     "extract_sisu_token",
     "login_with_cookies_msa_v1",
-    "login_with_cookies_prism",
+    "login_with_cookies_msa_v2_loopback",
     "login_with_cookies_sisu",
 ]
 
@@ -181,7 +183,7 @@ def _build_cookie_jar(  # NOSONAR linear protocol stages; splitting hurts readab
     """Build a real :class:`httpx.Cookies` jar from browser cookie dicts.
 
     Used when we need redirects honored within a single ``AsyncClient``
-    invocation (e.g. the Prism flow's interstitial chain). For
+    invocation (e.g. the v2-loopback flow's interstitial chain). For
     single-shot requests, ``cookies_to_header`` + a literal ``Cookie:``
     header is simpler.
     """
@@ -407,7 +409,7 @@ def _parse_sisu_array(
 # -- Flow 3: Prism Launcher (Azure-AD consumers) -----------------------------
 
 
-async def login_with_cookies_prism(
+async def login_with_cookies_msa_v2_loopback(
     cookies: Iterable[BrowserCookie | Mapping[str, Any]],
     *,
     client_id: str = PRISM_LAUNCHER_CLIENT_ID,
@@ -416,7 +418,11 @@ async def login_with_cookies_prism(
     user_agent: str = DEFAULT_USER_AGENT,
     http_client: httpx.AsyncClient | None = None,
 ) -> MSATokens:
-    """Prism-Launcher-style Azure-AD consumers flow using session cookies.
+    """MSA-v2 + loopback-redirect flow on Azure-AD consumers endpoints.
+
+    Pioneered by PrismLauncher, but works for any v2 client_id that has
+    a loopback (``http://127.0.0.1:*``) redirect URI registered — e.g.
+    LiquidLauncher. Defaults to PrismLauncher's client_id + redirect.
 
     Microsoft sometimes serves an interstitial (consent / "Stay signed
     in?" / cancel) page during this flow; we auto-handle the common
@@ -466,7 +472,7 @@ async def login_with_cookies_prism(
         if resp.status_code == 302:
             code = _code_from_redirect(resp.headers.get("location", ""))
             if code:
-                return await _exchange_prism_code(
+                return await _exchange_v2_loopback_code(
                     client,
                     code=code,
                     pkce_verifier=pkce.verifier,
@@ -485,7 +491,7 @@ async def login_with_cookies_prism(
         # 200 OK with an HTML body — Microsoft is asking us to follow
         # the "tile click" / consent dance. Parse the embedded
         # ``ServerData`` JSON and proceed.
-        code = await _handle_prism_html_flow(
+        code = await _handle_v2_loopback_html_flow(
             client,
             html=resp.text,
             referer=live_url,
@@ -494,11 +500,11 @@ async def login_with_cookies_prism(
         )
         if code is None:
             raise CookieAuthError(
-                "Prism HTML flow finished without an auth code — Microsoft "
-                "likely served an interstitial we don't handle. Try the "
-                "Live-Connect or SISU flow instead."
+                "v2-loopback HTML flow finished without an auth code — "
+                "Microsoft likely served an interstitial we don't handle. "
+                "Try the Live-Connect or SISU flow instead."
             )
-        return await _exchange_prism_code(
+        return await _exchange_v2_loopback_code(
             client,
             code=code,
             pkce_verifier=pkce.verifier,
@@ -593,7 +599,7 @@ def _build_tile_params(html: str, *, session_id: str, client_id: str) -> dict[st
     return params
 
 
-async def _handle_prism_html_flow(
+async def _handle_v2_loopback_html_flow(
     client: httpx.AsyncClient,
     *,
     html: str,
@@ -628,11 +634,13 @@ async def _handle_prism_html_flow(
             return code
 
     if resp.status_code == 200:
-        return await _handle_prism_interstitial(client, page_html=resp.text, user_agent=user_agent)
+        return await _handle_v2_loopback_interstitial(
+            client, page_html=resp.text, user_agent=user_agent
+        )
     return None
 
 
-async def _handle_prism_interstitial(  # NOSONAR linear protocol stages; splitting hurts readability
+async def _handle_v2_loopback_interstitial(  # NOSONAR linear protocol stages; splitting hurts readability
     client: httpx.AsyncClient,
     *,
     page_html: str,
@@ -669,7 +677,9 @@ async def _handle_prism_interstitial(  # NOSONAR linear protocol stages; splitti
                 return code
         if resp.status_code != 200:
             return None
-        return await _handle_prism_interstitial(client, page_html=resp.text, user_agent=user_agent)
+        return await _handle_v2_loopback_interstitial(
+            client, page_html=resp.text, user_agent=user_agent
+        )
 
     if "Consent/Update" not in action_url:
         return None
@@ -737,7 +747,7 @@ def _safe_str(value: object) -> str:
     return value if isinstance(value, str) else ""
 
 
-async def _exchange_prism_code(
+async def _exchange_v2_loopback_code(
     client: httpx.AsyncClient,
     *,
     code: str,
@@ -769,4 +779,4 @@ async def _exchange_prism_code(
         data = parse_json_object_auth(resp)
     except McAuthError:
         data = {"raw": resp.text}
-    raise CookieAuthError(f"Prism token exchange failed: status={resp.status_code} body={data!r}")
+    raise CookieAuthError(f"MSA v2 token exchange failed: status={resp.status_code} body={data!r}")

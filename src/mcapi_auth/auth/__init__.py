@@ -64,7 +64,7 @@ from .cookies import (
     cookies_to_header,
     extract_sisu_token,
     login_with_cookies_msa_v1,
-    login_with_cookies_prism,
+    login_with_cookies_msa_v2_loopback,
     login_with_cookies_sisu,
 )
 from .entitlements import Entitlements, derive_entitlement_flags, fetch_entitlements
@@ -161,7 +161,7 @@ __all__ = [
     "login_via_browser",
     "login_via_browser_v1",
     "login_with_cookies_msa_v1",
-    "login_with_cookies_prism",
+    "login_with_cookies_msa_v2_loopback",
     "login_with_cookies_sisu",
     "login_with_xbox",
     "poll_for_device_code_token",

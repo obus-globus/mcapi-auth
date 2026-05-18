@@ -40,16 +40,16 @@ async def main() -> None:
     print(f"MSA refresh token (truncated): {tokens.refresh_token[:24]}…")
 
 
-async def prism_example() -> None:
-    """Prism-Launcher Azure-AD flow — takes a structured cookie list."""
-    from mcapi_auth import login_with_cookies_prism
+async def msa_v2_loopback_example() -> None:
+    """MSA v2 + loopback redirect (Azure-AD consumers) — structured cookies."""
+    from mcapi_auth import login_with_cookies_msa_v2_loopback
 
     cookies = [
         BrowserCookie(name="MSPAuth", value="...", domain=".live.com"),
         BrowserCookie(name="MSPProf", value="...", domain=".live.com"),
     ]
-    tokens = await login_with_cookies_prism(cookies)
-    print(f"Prism access token (truncated): {tokens.access_token[:24]}…")
+    tokens = await login_with_cookies_msa_v2_loopback(cookies)
+    print(f"MSA v2 access token (truncated): {tokens.access_token[:24]}…")
 
 
 if __name__ == "__main__":

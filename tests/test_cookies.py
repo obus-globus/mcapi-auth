@@ -32,7 +32,7 @@ from mcapi_auth.auth import (
     cookies_to_header,
     extract_sisu_token,
     login_with_cookies_msa_v1,
-    login_with_cookies_prism,
+    login_with_cookies_msa_v2_loopback,
     login_with_cookies_sisu,
 )
 from mcapi_auth.auth.cookies import _build_cookie_jar
@@ -225,11 +225,11 @@ async def test_login_with_cookies_sisu_missing_fragment_raises() -> None:
         await login_with_cookies_sisu("MSPAuth=foo")
 
 
-# ---- login_with_cookies_prism (direct-302 happy path only) ------------------
+# ---- login_with_cookies_msa_v2_loopback (direct-302 happy path only) ------------------
 
 
 @respx.mock
-async def test_login_with_cookies_prism_direct_302_happy_path() -> None:
+async def test_login_with_cookies_msa_v2_loopback_direct_302_happy_path() -> None:
     respx.get(re.compile(r"^https://login\.microsoftonline\.com/consumers/")).mock(
         return_value=httpx.Response(
             302, headers={"location": "https://login.live.com/login.srf?something"}
@@ -254,7 +254,7 @@ async def test_login_with_cookies_prism_direct_302_happy_path() -> None:
             },
         )
     )
-    tokens = await login_with_cookies_prism(
+    tokens = await login_with_cookies_msa_v2_loopback(
         [BrowserCookie(name="MSPAuth", value="foo", domain=".live.com")]
     )
     assert tokens.access_token == "prism-access"
@@ -340,8 +340,8 @@ async def test_login_with_cookies_msa_v1_client_id_matrix(client_id: str) -> Non
 
 @V2_CLIENT_IDS
 @respx.mock
-async def test_login_with_cookies_prism_client_id_matrix(client_id: str) -> None:
-    """Every v2 loopback-registered client_id is threaded through prism flow."""
+async def test_login_with_cookies_msa_v2_loopback_client_id_matrix(client_id: str) -> None:
+    """Every v2 loopback-registered client_id is threaded through the v2-loopback flow."""
     assert not is_v1_client_id(client_id), "test inputs must all be v2-shaped"
 
     authorize_route = respx.get(
@@ -371,7 +371,7 @@ async def test_login_with_cookies_prism_client_id_matrix(client_id: str) -> None
         )
     )
 
-    tokens = await login_with_cookies_prism(
+    tokens = await login_with_cookies_msa_v2_loopback(
         [BrowserCookie(name="MSPAuth", value="foo", domain=".live.com")],
         client_id=client_id,
     )
@@ -445,6 +445,8 @@ async def test_prism_default_client_id_is_prism_launcher() -> None:
         )
     )
 
-    await login_with_cookies_prism([BrowserCookie(name="MSPAuth", value="foo", domain=".live.com")])
+    await login_with_cookies_msa_v2_loopback(
+        [BrowserCookie(name="MSPAuth", value="foo", domain=".live.com")]
+    )
 
     assert _query_client_id(str(authorize_route.calls.last.request.url)) == PRISM_LAUNCHER_CLIENT_ID

@@ -13,7 +13,7 @@ from mcapi_auth._constants import LIVE_CONNECT_AUTHORIZE_URL
 from mcapi_auth.auth.cookies import (
     _build_tile_params,
     _extract_server_data,
-    _handle_prism_html_flow,
+    _handle_v2_loopback_html_flow,
     _is_signed_in,
     _pick_session_id,
     _session_id_of,
@@ -158,7 +158,7 @@ class TestHandlePrismHtmlFlow:
             )
         )
         async with httpx.AsyncClient() as client:
-            code = await _handle_prism_html_flow(
+            code = await _handle_v2_loopback_html_flow(
                 client,
                 html=_VALID_PRISM_HTML,
                 referer="https://login.live.com/",
@@ -174,7 +174,7 @@ class TestHandlePrismHtmlFlow:
             return_value=httpx.Response(302, headers={"location": "https://example.invalid/"})
         )
         async with httpx.AsyncClient() as client:
-            code = await _handle_prism_html_flow(
+            code = await _handle_v2_loopback_html_flow(
                 client,
                 html=_VALID_PRISM_HTML,
                 referer="https://login.live.com/",
@@ -190,7 +190,7 @@ class TestHandlePrismHtmlFlow:
             return_value=httpx.Response(200, text="<html>no form here</html>")
         )
         async with httpx.AsyncClient() as client:
-            code = await _handle_prism_html_flow(
+            code = await _handle_v2_loopback_html_flow(
                 client,
                 html=_VALID_PRISM_HTML,
                 referer="https://login.live.com/",
@@ -202,7 +202,7 @@ class TestHandlePrismHtmlFlow:
     @pytest.mark.asyncio
     async def test_returns_none_without_server_data(self) -> None:
         async with httpx.AsyncClient() as client:
-            code = await _handle_prism_html_flow(
+            code = await _handle_v2_loopback_html_flow(
                 client,
                 html="<html>no server data</html>",
                 referer="r",
@@ -215,7 +215,7 @@ class TestHandlePrismHtmlFlow:
     async def test_returns_none_without_session(self) -> None:
         html = '<script>var ServerData = {"arrSessions": []};</script>'
         async with httpx.AsyncClient() as client:
-            code = await _handle_prism_html_flow(
+            code = await _handle_v2_loopback_html_flow(
                 client, html=html, referer="r", client_id="cid", user_agent="ua"
             )
         assert code is None
@@ -224,7 +224,7 @@ class TestHandlePrismHtmlFlow:
     async def test_returns_none_without_tile_params(self) -> None:
         html = '<script>var ServerData = {"arrSessions":[{"id":"s","isSignedIn":true}]};</script>'
         async with httpx.AsyncClient() as client:
-            code = await _handle_prism_html_flow(
+            code = await _handle_v2_loopback_html_flow(
                 client, html=html, referer="r", client_id="cid", user_agent="ua"
             )
         assert code is None
