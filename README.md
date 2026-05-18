@@ -1,7 +1,7 @@
 # mcapi-auth
 
 [![CI](https://github.com/clawdbot-silly-waddle/mcapi-auth/actions/workflows/ci.yml/badge.svg)](https://github.com/clawdbot-silly-waddle/mcapi-auth/actions/workflows/ci.yml)
-![coverage](https://img.shields.io/badge/coverage-85.8%25-green)
+![coverage](https://img.shields.io/badge/coverage-86.0%25-green)
 ![python](https://img.shields.io/badge/python-3.14+-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 
