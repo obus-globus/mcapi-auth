@@ -34,6 +34,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Tests
 
+- **`BedrockKeyPair.from_pem()` non-EC rejection** — four new unit
+  tests cover RSA, Ed25519, P-256 EC, and garbage-input rejection.
+  The class previously only had a constructor-level curve check; the
+  PEM loader now has explicit test coverage for "EC private key"
+  rejection on non-EC keys.
 - **Live E2E coverage for `accept_realms_tos` and `is_server_blocked`**
   in `tests-e2e/test_api_coverage.py`. The Realms TOS POST is
   idempotent (re-posting on an already-agreed account returns 204),

@@ -62,6 +62,59 @@ def test_keypair_rejects_wrong_curve() -> None:
         _ = BedrockKeyPair(p256)
 
 
+def test_from_pem_rejects_rsa_key() -> None:
+    """`BedrockKeyPair.from_pem` must reject non-EC private keys."""
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import rsa
+
+    rsa_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    rsa_pem = rsa_key.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=serialization.NoEncryption(),
+    ).decode("ascii")
+    with pytest.raises(ValueError, match="EC private key"):
+        _ = BedrockKeyPair.from_pem(rsa_pem)
+
+
+def test_from_pem_rejects_ed25519_key() -> None:
+    """Ed25519 is a private key but not an `EllipticCurvePrivateKey` —
+    `from_pem` must reject it (it's an `Ed25519PrivateKey` instead)."""
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import ed25519
+
+    ed = ed25519.Ed25519PrivateKey.generate()
+    ed_pem = ed.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=serialization.NoEncryption(),
+    ).decode("ascii")
+    with pytest.raises(ValueError, match="EC private key"):
+        _ = BedrockKeyPair.from_pem(ed_pem)
+
+
+def test_from_pem_rejects_p256_ec_key() -> None:
+    """A valid EC key on the wrong curve still has to be rejected
+    (this exercises the second guard inside `__init__`)."""
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import ec
+
+    p256 = ec.generate_private_key(ec.SECP256R1())
+    p256_pem = p256.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=serialization.NoEncryption(),
+    ).decode("ascii")
+    with pytest.raises(ValueError, match="SECP384R1"):
+        _ = BedrockKeyPair.from_pem(p256_pem)
+
+
+def test_from_pem_rejects_garbage() -> None:
+    """Random bytes that don't even parse as PEM."""
+    with pytest.raises(Exception):  # noqa: B017 -- cryptography raises various errors
+        _ = BedrockKeyPair.from_pem("not even a pem file")
+
+
 def test_decode_jwt_payload_works() -> None:
     jwt = _make_jwt({"hello": "world", "exp": 999})
     payload = decode_jwt_payload(jwt)
