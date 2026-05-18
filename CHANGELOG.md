@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-05-18
+
+### Added
+
+- **Sisu / Xbox-Live device-token authentication** (new
+  ``mcapi_auth.auth.xbox_device`` module, requires the ``[bedrock]``
+  extra for the ``cryptography`` dep — same as ``api.bedrock``):
+  - ``XblDeviceKeyPair`` — ES256 / NIST P-256 device keypair with
+    PEM round-trip, ``ProofKey`` JWK helper, and the Xbox-specific
+    ``Signature`` header builder (Windows-epoch timestamp +
+    ECDSA-SHA256 in P1363 raw r||s format).
+  - ``authenticate_xbl_device(keypair, *, device_type, device_id)``
+    — POSTs to ``device.auth.xboxlive.com/device/authenticate``,
+    returns an ``XblDeviceToken``.
+  - ``sisu_authorize(msa_token, device_token, keypair, *, client_id,
+    relying_party)`` — POSTs to ``sisu.xboxlive.com/authorize``,
+    returns ``XblSisuTokens`` (UserToken + TitleToken + XSTSToken in
+    one round-trip). 401 responses are translated to typed XErr
+    exceptions just like :func:`mcapi_auth.authenticate_xsts`.
+  - Constants ``XBL_XSTS_BEDROCK_RELYING_PARTY``,
+    ``XBL_XSTS_BEDROCK_PLAYFAB_RELYING_PARTY``,
+    ``XBL_XSTS_BEDROCK_REALMS_RELYING_PARTY`` for the common Sisu
+    audiences.
+- ``examples/bedrock_minimal.py`` rewritten to use the full Sisu
+  flow end-to-end (persisted device keypair + device UUID, two
+  ``sisu_authorize`` calls for the multiplayer and PlayFab audiences,
+  ES384 identity keypair, ``minecraft_authenticate``, session JWT,
+  signed multiplayer token).
+- ``examples/playfab_login.py`` now uses
+  ``https://b980a380.minecraft.playfabapi.com/`` as the PlayFab XSTS
+  relying party (matching the Java reference) and references the
+  Sisu-based bedrock example.
+
+### Notes
+
+- The returned ``XblXstsToken`` is shape-compatible with the existing
+  ``mcapi_auth.XSTSToken`` (both expose ``.token`` and ``.userhash``),
+  so it can be passed directly to ``minecraft_authenticate``,
+  ``playfab_login_with_xbox``, etc. — a ``# type: ignore[arg-type]``
+  may be needed at the call site since the static types differ. A
+  proper protocol unification is on the roadmap.
+
 ## [0.11.0] - 2026-05-18
 
 ### Added

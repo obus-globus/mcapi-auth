@@ -454,9 +454,50 @@ it to the player's account in the ``identityJwt``. Use
 ``BedrockKeyPair.to_pem()`` / ``BedrockKeyPair.from_pem()`` for storage.
 
 > **Note:** ``mcapi_auth``'s built-in ``authenticate_xsts()`` is
-> scoped to the Java relying party. Obtaining a Bedrock-scoped XSTS
-> (via the Sisu / XBL-device-token dance) is out of scope for 0.10.0 —
-> callers must currently provide one themselves.
+> scoped to the Java relying party. For a Bedrock-scoped XSTS use
+> the Sisu flow in ``mcapi_auth.auth.xbox_device`` (added in 0.12.0)
+> — it returns a UserToken, TitleToken, *and* an XSTSToken in one
+> call, all bound to a persistent device keypair. See
+> ``examples/bedrock_minimal.py``.
+
+### Sisu flow / device-token authentication
+
+For Bedrock and other Microsoft *title* client ids, the plain
+``user.auth.xboxlive.com`` + ``xsts.auth.xboxlive.com`` chain is
+insufficient — you need a TitleToken as well, which only the Sisu
+endpoint mints. The ``mcapi_auth.auth.xbox_device`` module wraps it:
+
+```python
+from mcapi_auth import BEDROCK_WIN32_CLIENT_ID
+from mcapi_auth.auth.xbox_device import (
+    XBL_XSTS_BEDROCK_RELYING_PARTY,
+    XblDeviceKeyPair,
+    authenticate_xbl_device,
+    sisu_authorize,
+)
+from uuid import uuid4
+
+# Persist these across launches; Xbox treats them as a device identity.
+device_kp = XblDeviceKeyPair.generate()
+device_id = uuid4()
+
+device_token = await authenticate_xbl_device(device_kp, device_id=device_id)
+
+sisu = await sisu_authorize(
+    msa.access_token,
+    device_token,
+    device_kp,
+    client_id=BEDROCK_WIN32_CLIENT_ID,
+    relying_party=XBL_XSTS_BEDROCK_RELYING_PARTY,
+)
+print(sisu.xsts_token.token, sisu.user_token.userhash, sisu.title_token.title_id)
+```
+
+The returned ``sisu.xsts_token`` is shape-compatible with
+``mcapi_auth.XSTSToken`` (same ``.token`` / ``.userhash`` attributes)
+and can be passed straight to ``minecraft_authenticate``,
+``playfab_login_with_xbox``, or any of the other XSTS-consuming helpers.
+Requires the ``[bedrock]`` extra (for ``cryptography``).
 
 ## More examples
 

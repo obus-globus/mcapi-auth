@@ -37,9 +37,13 @@ async def main() -> None:
     xbl = await authenticate_xbl(msa.access_token)
 
     # ---- 3. PlayFab-scoped XSTS (note the relying_party!) ---------
+    # The plain ``xsts.auth.xboxlive.com`` endpoint with this RP works
+    # for the PlayFab leg. For the full Bedrock chain (which needs a
+    # TitleToken too) use the Sisu flow — see
+    # ``examples/bedrock_minimal.py``.
     pf_xsts = await authenticate_xsts(
         xbl.token,
-        relying_party="http://playfab.xboxlive.com/",
+        relying_party="https://b980a380.minecraft.playfabapi.com/",
     )
 
     # ---- 4. PlayFab login -----------------------------------------
