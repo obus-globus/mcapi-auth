@@ -33,6 +33,17 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 USER_DATA_DIR = Path(__file__).parent / ".user-data"
 
+# Auto-load step-up auth credentials from ~/.config/mcapi-auth-e2e/secrets.env
+# (key=value lines; first wins). Gitignored, never in the repo.
+_SECRETS_FILE = Path.home() / ".config" / "mcapi-auth-e2e" / "secrets.env"
+if _SECRETS_FILE.is_file():
+    for _line in _SECRETS_FILE.read_text().splitlines():
+        _stripped = _line.strip()
+        if not _stripped or _stripped.startswith("#") or "=" not in _stripped:
+            continue
+        _k, _v = _stripped.split("=", 1)
+        os.environ.setdefault(_k.strip(), _v.strip())
+
 
 def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
     skip_marker = pytest.mark.skip(
