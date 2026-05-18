@@ -31,6 +31,7 @@ from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as _pkg_version
 
 from . import api, auth
+from ._http import get_default_user_agent, set_default_user_agent
 from .api import (
     BEDROCK_PLAYFAB_TITLE_ID,
     DEFAULT_REALMS_GAME_VERSION,
@@ -337,6 +338,7 @@ __all__ = [
     "fetch_realms_world",
     "fetch_realms_worlds",
     "fetch_version_manifest",
+    "get_default_user_agent",
     "get_name_change_eligibility",
     "get_own_profile",
     "get_profile_by_uuid",
@@ -364,5 +366,6 @@ __all__ = [
     "reset_skin",
     "resolve_browser_redirect",
     "resolve_client_id",
+    "set_default_user_agent",
     "xerr_to_exception",
 ]

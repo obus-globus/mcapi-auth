@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-05-18
+
+### Added
+
+- ``mcapi_auth.set_default_user_agent(str)`` and
+  ``mcapi_auth.get_default_user_agent()`` — process-wide overrides for
+  the ``User-Agent`` header used by the library's *fallback*
+  :class:`httpx.AsyncClient` (the one built when a caller does not pass
+  ``http_client=``). Caller-supplied clients are never mutated — their
+  headers remain whatever their owner configured. Blank values are
+  rejected with :class:`ValueError`.
+
 ## [0.10.1] - 2026-05-18
 
 ### Fixed

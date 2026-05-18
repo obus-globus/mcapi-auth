@@ -227,6 +227,23 @@ async with httpx.AsyncClient(timeout=15.0, proxy="http://...") as client:
   endpoints (`login.live.com`, XBL, XSTS, `loginWithXbox`) shouldn't be
   cached — they correctly emit no-store, so they pass through.
 
+### Customising the default `User-Agent`
+
+When you don't pass `http_client=`, the library builds a fallback
+client that sends `User-Agent: mcapi-auth/<version>`. Override it
+process-wide with:
+
+```python
+from mcapi_auth import set_default_user_agent, get_default_user_agent
+
+set_default_user_agent("my-app/1.2.3 (+https://example.org/contact)")
+print(get_default_user_agent())  # "my-app/1.2.3 (…)"
+```
+
+Caller-supplied clients are never mutated — if you pass your own
+`httpx.AsyncClient`, its headers stay exactly as you configured them.
+Blank values are rejected with `ValueError`.
+
 ## Cookie-based bulk auth
 
 For unattended automation against accounts you own,
