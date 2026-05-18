@@ -112,8 +112,10 @@ def __dir__() -> list[str]:
 def _populate_eager() -> None:
     for name in __all__:
         try:
-            _WRAPPED[name] = _wrap(cast("Callable[..., Coroutine[Any, Any, Any]]", getattr(_root, name)))
-        except (AttributeError, TypeError):  # pragma: no cover - defensive
+            _WRAPPED[name] = _wrap(
+                cast("Callable[..., Coroutine[Any, Any, Any]]", getattr(_root, name))
+            )
+        except AttributeError, TypeError:  # pragma: no cover - defensive
             continue
 
 
