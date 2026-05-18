@@ -63,6 +63,30 @@ the interactive step), pass ``storage=FileTokenStorage()`` to
 ``login_device_code_v1()``. The default ``NullTokenStorage`` keeps state in memory
 only.
 
+## Synchronous usage
+
+If you can't or don't want to write async code (one-off scripts,
+Django/Flask views), use the sync facade — every public async function
+is exposed as a blocking wrapper that runs in a fresh event loop:
+
+```python
+from mcapi_auth import sync as mcapi
+
+session = mcapi.login()                       # blocks until done
+profile = mcapi.get_own_profile(token=session.access_token)
+print(profile.name, profile.id)
+```
+
+Caveats:
+
+- Each call spins up a fresh `asyncio.run(...)` loop — fine for ad-hoc
+  scripts, not great if you want connection pooling across many calls.
+- **Do not call `mcapi_auth.sync.*` from inside a running asyncio
+  loop.** It will raise — use the async API directly in that case.
+- The full async surface (~73 functions including `login`, `refresh_*`,
+  `get_*`, `change_*`, `fetch_*`, `is_*`, `accept_*`, `start_*`) is
+  available. `from mcapi_auth import sync; dir(sync)` lists them.
+
 ## Package layout
 
 ```

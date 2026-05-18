@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Synchronous facade `mcapi_auth.sync`.** Every public async function
+  in `mcapi_auth` is exposed as a blocking wrapper that runs in a fresh
+  `asyncio.run(...)` loop. Designed for one-off scripts, Django/Flask
+  views, and ad-hoc experiments. Refuses to run from inside an already-
+  running event loop (raises `RuntimeError` with guidance). See
+  `examples/sync_login.py`.
+
+### Tooling
+
+- **CI** — `.github/workflows/ci.yml` runs ruff (lint + format),
+  basedpyright, and pytest with coverage on every push and PR.
+  Auto-updates the README coverage badge on master pushes.
+- **SBOM** — `.github/workflows/sbom.yml` generates CycloneDX SBOMs
+  (JSON + XML) via `cyclonedx-bom` on tagged releases and attaches
+  them as GitHub Release artifacts. Runs `pip-audit --strict` on every
+  push for known-CVE scanning.
+- **Coverage badge** — `scripts/update_coverage_badge.py` rewrites the
+  README's shields.io coverage badge from `coverage.xml` with
+  threshold-based colors (brightgreen ≥90, green ≥80, …).
+- **Version drift guard** — `tests/test_version.py` asserts
+  `mcapi_auth.__version__` matches `pyproject.toml`'s `project.version`.
+
 ## [0.17.0] - 2026-05-18
 
 ### Fixed
