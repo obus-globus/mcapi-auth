@@ -20,3 +20,7 @@ coverage.xml
 site/
 tests-e2e/.user-data/
 tests-e2e/storage_state.json
+tests-e2e/API_TRAFFIC_LOG.md
+tests-e2e/BEDROCK_TRAFFIC_LOG.md
+tests-e2e/BEDROCK_LIVE_TRAFFIC_LOG.md
+tests-e2e/MS_PROMPT_LOG.md

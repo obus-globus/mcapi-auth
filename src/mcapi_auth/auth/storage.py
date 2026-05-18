@@ -54,7 +54,9 @@ class NullTokenStorage:
     async def load(self) -> str | None:  # NOSONAR protocol method, no I/O in this impl
         return None
 
-    async def save(self, refresh_token: str) -> None:  # NOSONAR protocol method, no I/O in this impl
+    async def save(
+        self, refresh_token: str
+    ) -> None:  # NOSONAR protocol method, no I/O in this impl
         return
 
     async def clear(self) -> None:  # NOSONAR protocol method, no I/O in this impl

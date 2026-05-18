@@ -1,0 +1,78 @@
+name: SBOM
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  cyclonedx:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Pin Python (3.14)
+        run: uv python install 3.14
+
+      - name: Sync runtime dependencies (no dev)
+        run: uv sync --all-extras
+
+      - name: Install cyclonedx-py
+        run: uv pip install cyclonedx-bom
+
+      - name: Generate CycloneDX SBOM (JSON)
+        run: |
+          uv run cyclonedx-py environment \
+            --output-format json \
+            --output-file sbom.cdx.json
+
+      - name: Generate CycloneDX SBOM (XML)
+        run: |
+          uv run cyclonedx-py environment \
+            --output-format xml \
+            --output-file sbom.cdx.xml
+
+      - name: Upload SBOM artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: |
+            sbom.cdx.json
+            sbom.cdx.xml
+
+      - name: Attach SBOM to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            sbom.cdx.json
+            sbom.cdx.xml
+
+  pip-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Pin Python (3.14)
+        run: uv python install 3.14
+
+      - name: Sync deps
+        run: uv sync --all-extras
+
+      - name: pip-audit
+        run: |
+          uv pip install pip-audit
+          uv run pip-audit --strict --progress-spinner off
