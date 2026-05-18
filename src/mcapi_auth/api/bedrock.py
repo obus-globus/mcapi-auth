@@ -45,9 +45,10 @@ What this module does **not** include:
 from __future__ import annotations
 
 import base64
+import hashlib
 import json
 from typing import Any, Final, cast
-from uuid import UUID, uuid5
+from uuid import UUID
 
 import httpx
 from pydantic import ValidationError
@@ -358,16 +359,16 @@ class MinecraftMultiplayerToken(McModel):
     def uuid(self) -> UUID:
         """Stable client UUID derived from the XUID.
 
-        Matches the Java reference (``UUID.nameUUIDFromBytes`` /
-        version 3 UUID) — we use :func:`uuid.uuid5` with the all-zero
-        namespace for the same byte layout the Bedrock protocol uses.
+        Matches the Java reference exactly: Bedrock uses
+        ``UUID.nameUUIDFromBytes("pocket-auth-1-xuid:<xuid>")``, which is
+        an MD5-based (version 3) UUID. The standard library's
+        :func:`uuid.uuid5` cannot be used (SHA-1 / version 5), nor can
+        :func:`uuid.uuid3` (which requires a namespace UUID, not a raw
+        string), so the MD5 byte layout is computed manually below.
         """
-        # Java's UUID.nameUUIDFromBytes is MD5-based (version 3). uuid5
-        # is SHA-1-based (version 5). They don't match. To match
-        # MinecraftAuth.java exactly we replicate the MD5 logic here.
-        import hashlib
-
-        h = hashlib.md5((_BEDROCK_XUID_NAMESPACE + self.xuid).encode("utf-8")).digest()
+        h = hashlib.md5(  # MD5 is required for Java parity
+            (_BEDROCK_XUID_NAMESPACE + self.xuid).encode("utf-8")
+        ).digest()
         b = bytearray(h)
         b[6] = (b[6] & 0x0F) | 0x30  # version 3
         b[8] = (b[8] & 0x3F) | 0x80  # IETF variant
@@ -540,7 +541,3 @@ def _validate_franchise[M: McModel](response: httpx.Response, model: type[M]) ->
             response.text,
             url=str(response.request.url) if response.request else None,
         ) from e
-
-
-# Silence unused-import warning for the namespace re-export.
-_ = uuid5

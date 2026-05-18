@@ -3,6 +3,8 @@ Everything that might shift if Microsoft / Mojang move their APIs around
 is collected here so refactors stay tight to one file.
 """
 
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _pkg_version
 from typing import Final
 
 # Public Minecraft Launcher client_id. Every open-source launcher
@@ -377,8 +379,20 @@ BULK_USERNAME_LOOKUP_MAX: Final = 10
 # Texture host (everything Mojang serves under this URL is a PNG)
 TEXTURES_HOST: Final = "textures.minecraft.net"
 
+
 # User-Agent used by the regular API client (acquire_client). The cookie
-# flows use DEFAULT_USER_AGENT (a browser-faithful string) instead.
+# flows use DEFAULT_USER_AGENT (a browser-faithful string) instead. The
+# version is looked up from package metadata so it stays in lock-step with
+# ``pyproject.toml`` and ``mcapi_auth.__version__`` without manual updates.
+def _detect_pkg_version() -> str:
+    try:
+        return _pkg_version("mcapi-auth")
+    except PackageNotFoundError:  # editable / source checkout without metadata
+        return "0.0.0+unknown"
+
+
+_PKG_VERSION: Final = _detect_pkg_version()
+
 DEFAULT_API_USER_AGENT: Final = (
-    "mcapi-auth/0.3.0 (+https://github.com/clawdbot-silly-waddle/mcapi-auth)"
+    f"mcapi-auth/{_PKG_VERSION} (+https://github.com/clawdbot-silly-waddle/mcapi-auth)"
 )

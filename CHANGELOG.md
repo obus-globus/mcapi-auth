@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.1] - 2026-05-18
+
+### Fixed
+
+- ``DEFAULT_API_USER_AGENT`` was hardcoded to ``mcapi-auth/0.3.0`` and
+  never updated. It is now derived from package metadata
+  (``importlib.metadata.version``) so it tracks the real release
+  automatically.
+
+### Changed
+
+- ``MinecraftMultiplayerToken.uuid`` docstring rewritten — previously
+  it incorrectly described the derivation as ``uuid5`` when the actual
+  implementation is MD5-based (version 3) for Java parity.
+- Removed the unused ``uuid5`` import and its ``_ = uuid5``
+  suppression line from ``api.bedrock``.
+- ``README`` quickstart now mentions that the default ``login()``
+  storage keeps tokens in memory; ``FileTokenStorage()`` is needed for
+  cross-run persistence.
+
 ## [0.10.0] - 2026-05-18
 
 ### Added

@@ -39,6 +39,8 @@ from mcapi_auth import login, get_own_profile, get_uuid_by_name
 
 async def main() -> None:
     session = await login()                       # Microsoft → Minecraft token
+    # Pass ``storage=FileTokenStorage()`` to persist the refresh token
+    # across runs — by default tokens live only in memory.
     print(session.username, session.uuid_dashed)
 
     profile = await get_own_profile(session)      # accepts session or raw str
@@ -51,7 +53,10 @@ asyncio.run(main())
 ```
 
 First run: a URL + 8-character code is printed; visit, paste, sign in.
-Subsequent runs reuse the persisted refresh token.
+To persist the refresh token across runs (so subsequent launches skip
+the interactive step), pass ``storage=FileTokenStorage()`` to
+``login()``. The default ``NullTokenStorage`` keeps state in memory
+only.
 
 ## Package layout
 
