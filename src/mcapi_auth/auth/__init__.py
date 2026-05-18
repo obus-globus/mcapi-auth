@@ -77,6 +77,13 @@ from .flow import (
     login_device_code_v2,
 )
 from .holder import ChangeListener, Holder
+from .inspect import (
+    StageSummary,
+    chain_state_summary,
+    describe_chain,
+    describe_minecraft_token,
+    redact_token,
+)
 from .minecraft import MinecraftProfile, MinecraftToken, login_with_xbox
 from .msa import (
     DeviceCodePrompt,
@@ -86,7 +93,12 @@ from .msa import (
     request_device_code,
 )
 from .session import MinecraftSession
-from .session_server import JoinServerError, join_server
+from .session_server import (
+    JoinServerError,
+    compute_server_id_hash,
+    join_server,
+    join_server_with_session,
+)
 from .storage import FileTokenStorage, NullTokenStorage, TokenStorage, default_storage_path
 from .token import MinecraftTokenInfo, decode_minecraft_access_token
 from .xbox import XboxLiveToken, XSTSToken, authenticate_xbl, authenticate_xsts
@@ -141,6 +153,7 @@ __all__ = [
     "PKCEChallenge",
     "RegionBlockedError",
     "SISUTokens",
+    "StageSummary",
     "TokenStorage",
     "VerifyAgeRequiredError",
     "XSTSError",
@@ -152,11 +165,15 @@ __all__ = [
     "authenticate_xbl",
     "authenticate_xsts",
     "build_authorize_url",
+    "chain_state_summary",
+    "compute_server_id_hash",
     "cookies_to_header",
     "create_pkce_challenge",
     "decode_minecraft_access_token",
     "default_storage_path",
     "derive_entitlement_flags",
+    "describe_chain",
+    "describe_minecraft_token",
     "exchange_authorization_code",
     "exchange_refresh_token",
     "extract_sisu_token",
@@ -164,6 +181,7 @@ __all__ = [
     "is_browser_unsupported",
     "is_v1_client_id",
     "join_server",
+    "join_server_with_session",
     "login_browser_v1",
     "login_browser_v2",
     "login_device_code_v1",
@@ -173,6 +191,7 @@ __all__ = [
     "login_with_cookies_sisu",
     "login_with_xbox",
     "poll_for_device_code_token",
+    "redact_token",
     "request_device_code",
     "resolve_browser_redirect",
     "resolve_client_id",

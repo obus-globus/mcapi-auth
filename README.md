@@ -401,6 +401,58 @@ exposing `access_token` + `uuid` + `username`), including an
 Bedrock realms are not implemented (Bedrock uses a different API and
 different XSTS relying party).
 
+## Proxying a Minecraft client — `join_server` + server-id hash
+
+For implementing the client side of online-mode authentication (e.g. a
+Minecraft proxy, a custom auth gateway, or an axochat-style service):
+
+```python
+from mcapi_auth import (
+    compute_server_id_hash,
+    join_server,
+    join_server_with_session,
+)
+
+# Low-level: you already have a server-id hash
+await join_server(session, server_id="abc123...")
+
+# High-level: hand it the raw fields from the Encryption Request packet
+await join_server_with_session(
+    session,
+    server_id_str=encryption_request.server_id,     # ASCII, ≤20 chars, often ""
+    shared_secret=client_aes_key,                   # 16-byte AES key the client generated
+    public_key_der=encryption_request.public_key,   # X.509 SubjectPublicKeyInfo blob
+)
+```
+
+`compute_server_id_hash()` is exposed separately for tests / inspection.
+It implements the Notchian signed-hex SHA-1 (digest interpreted as a
+160-bit two's-complement integer, hex-formatted with no leading zeros).
+
+## Debugging a chain — `describe_chain` / `chain_state_summary`
+
+```python
+from mcapi_auth import describe_chain, chain_state_summary, describe_minecraft_token
+
+print(describe_chain(chain))
+# AuthChain  client_id=00000000402b5328  v1=True
+#   msa        ✓  59min                (EwAIA...(982 chars))
+#   xbl        ·  —
+#   xsts       ·  —
+#   minecraft  ✓  23.9hr               (eyJhbG...(842 chars))
+#   profile    ✓  —                    (Notch <069a79f444e9...>)
+
+# Machine-readable form for logs / metrics:
+for row in chain_state_summary(chain):
+    log.info("stage", **row.to_dict())
+
+# Peek at the JWT claims of a Minecraft access token:
+print(describe_minecraft_token(chain.minecraft_holder.get_cached().access_token))
+```
+
+All helpers are read-only, redact token bodies, and never make network
+calls.
+
 ## Player chat-signing certificates (1.19+)
 
 Minecraft 1.19 introduced signed chat (and chat reporting in 1.19.1+);

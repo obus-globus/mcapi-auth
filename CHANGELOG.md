@@ -9,6 +9,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`join_server` convenience overload.** `join_server()` now accepts a
+  `MinecraftSession` positional argument as a shorthand for passing
+  `access_token=` and `uuid=` explicitly. The original two-keyword form
+  still works.
+- **`compute_server_id_hash(server_id, shared_secret, public_key_der)`.**
+  Pure helper for the Notchian signed-hex SHA-1 algorithm used by
+  online-mode Minecraft servers during the Encryption Request handshake.
+  Verified against the classic ``Notch``/``jeb_``/``simon`` wiki test
+  vectors.
+- **`join_server_with_session(session, server_id_str, shared_secret,
+  public_key_der)`.** One-call wrapper that computes the hash and posts
+  to the Mojang sessionserver — for code that proxies a Minecraft
+  client through the auth library.
+- **Chain introspection helpers (`mcapi_auth.auth.inspect`).** Read-only,
+  no-network debugging utilities for `AuthChain`:
+  - `describe_chain(chain) -> str` pretty-prints every cached stage
+    (MSA → XBL → XSTS → Minecraft → profile) with expiry, time-to-live,
+    and a redacted token preview.
+  - `chain_state_summary(chain) -> list[StageSummary]` returns the
+    same data as structured rows suitable for logs/metrics.
+  - `describe_minecraft_token(jwt) -> str` formats decoded JWT claims.
+  - `redact_token(token, *, keep=8)` truncation helper used throughout.
+
 - **Synchronous facade `mcapi_auth.sync`.** Every public async function
   in `mcapi_auth` is exposed as a blocking wrapper that runs in a fresh
   `asyncio.run(...)` loop. Designed for one-off scripts, Django/Flask
