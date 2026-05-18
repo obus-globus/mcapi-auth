@@ -44,6 +44,29 @@ def test_missing_xerr_still_yields_an_exception() -> None:
     assert exc.xerr is None
 
 
+def test_missing_xerr_with_body_excerpt_includes_body_in_message() -> None:
+    exc = xerr_to_exception(None, body_excerpt='{"Identity":"0"}')
+    assert isinstance(exc, XSTSError)
+    assert exc.xerr is None
+    assert '{"Identity":"0"}' in str(exc)
+
+
+def test_missing_xerr_with_long_body_truncates_to_300_chars() -> None:
+    long_body = "x" * 500
+    exc = xerr_to_exception(None, body_excerpt=long_body)
+    rendered = str(exc)
+    # 300-char excerpt + ellipsis + repr quoting; original body absent.
+    assert "x" * 300 in rendered
+    assert "…" in rendered
+    assert "x" * 400 not in rendered
+
+
+def test_missing_xerr_with_empty_body_excerpt_renders_empty_marker() -> None:
+    exc = xerr_to_exception(None, body_excerpt="")
+    assert isinstance(exc, XSTSError)
+    assert "body=''" in str(exc)
+
+
 def test_child_account_message_mentions_family_pack() -> None:
     exc = xerr_to_exception(c.XERR_CHILD_ACCOUNT)
     assert "Family" in str(exc) or "family" in str(exc)

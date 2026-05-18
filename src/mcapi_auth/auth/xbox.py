@@ -130,9 +130,11 @@ async def authenticate_xsts(
         try:
             data = parse_json_object_auth(response)
         except McAuthError:
-            raise xerr_to_exception(None) from None
+            raise xerr_to_exception(None, body_excerpt=response.text) from None
         xerr_raw = data.get("XErr")
         xerr: int | None = xerr_raw if isinstance(xerr_raw, int) else None
+        if xerr is None:
+            raise xerr_to_exception(None, body_excerpt=response.text)
         raise xerr_to_exception(xerr)
     if response.status_code != 200:
         raise XboxAuthError(f"XSTS authorize failed: status={response.status_code}")

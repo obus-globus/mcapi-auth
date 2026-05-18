@@ -16,7 +16,6 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import re
 import sys
 from contextlib import suppress
 from pathlib import Path
@@ -27,6 +26,16 @@ from httpdbg import HTTPRecords, httprecord  # pyright: ignore[reportMissingImpo
 
 sys.path.insert(0, str(Path(__file__).parent))
 from _consent import drive_consent_until_loopback
+from _traffic import (
+    REDACTED_HEADERS as _BASE_REDACTED_HEADERS,
+)
+from _traffic import (
+    decompress_body,
+    redact_token_fields,
+)
+from _traffic import (
+    redact_header_value as _base_redact_header_value,
+)
 
 from mcapi_auth import login_browser_v2
 from mcapi_auth.api import (
@@ -50,13 +59,8 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 LOG_PATH = Path(__file__).parent / "API_TRAFFIC_LOG.md"
-SENSITIVE_HEADER_NAMES = {
-    "authorization",
-    "cookie",
-    "set-cookie",
-    "x-xbl-contract-version",  # benign but keep noisy auth headers tidy
-    "www-authenticate",
-}
+# Extends the shared set with one extra benign-but-noisy XBL header.
+SENSITIVE_HEADER_NAMES = _BASE_REDACTED_HEADERS | {"x-xbl-contract-version"}
 REDACTED = "<redacted>"
 NETLOCS_OF_INTEREST = (
     "minecraftservices.com",
@@ -74,41 +78,18 @@ NETLOCS_OF_INTEREST = (
 def _redact_value(name: str, value: str) -> str:
     if name.lower() in SENSITIVE_HEADER_NAMES:
         return REDACTED
-    # Catch stray bearer tokens embedded elsewhere
-    return re.sub(r"(?i)\bbearer\s+[\w.\-=]+", "Bearer " + REDACTED, value)
+    return _base_redact_header_value(name, value)
 
 
 def _redact_body(raw: bytes | None) -> str:
     if not raw:
         return ""
-    # Detect & decompress gzip/deflate bodies that httpdbg captured pre-decode.
-    data = bytes(raw)
-    if data[:2] == b"\x1f\x8b":
-        import gzip
-
-        try:
-            data = gzip.decompress(data)
-        except Exception:
-            return f"<{len(raw)} bytes gzip, undecodable>"
-    elif data[:2] in (b"\x78\x9c", b"\x78\x01", b"\x78\xda"):
-        import zlib
-
-        try:
-            data = zlib.decompress(data)
-        except Exception:
-            return f"<{len(raw)} bytes zlib, undecodable>"
+    data = decompress_body(bytes(raw))
     try:
         text = data.decode("utf-8")
     except UnicodeDecodeError:
         return f"<{len(data)} bytes binary>"
-    text = re.sub(
-        r'("(?:access_token|refresh_token|id_token|XSTSToken|sessionTicket|EntityToken|'
-        r'serverId|sharedSecret|privateKey|publicKey|publicKeySignature|'
-        r'publicKeySignatureV2)"\s*:\s*")[^"]*"',
-        r"\1" + REDACTED + '"',
-        text,
-    )
-    text = re.sub(r'("Token"\s*:\s*")[^"]+"', r"\1" + REDACTED + '"', text)
+    text = redact_token_fields(text)
     if len(text) > 4000:
         return text[:4000] + f"\n... [truncated, total {len(data)} decoded bytes]"
     return text

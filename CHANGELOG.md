@@ -21,6 +21,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `poll_for_device_code_token`, and works for both v1 (Bedrock,
   Minecraft launcher) and v2 (custom Azure-AD app) client_ids.
 
+### Changed
+
+- **Better diagnostics on XSTS 401 with no `XErr` code.** When Sisu
+  or `xsts.auth.xboxlive.com` reject a request with HTTP 401 but
+  return an empty or unparseable body (the failure shape seen when
+  an account lacks the requested entitlement), the resulting
+  `XSTSError` message now includes a `body=<excerpt>` clause with up
+  to 300 characters of the raw response, so callers don't have to
+  fire up `httpdbg` to see what the server actually returned.
+  `xerr_to_exception()` gains a new `body_excerpt=` keyword argument.
+
 ## [0.16.1] - 2026-05-18
 
 ### Fixed

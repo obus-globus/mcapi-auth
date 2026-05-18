@@ -42,6 +42,7 @@ from mcapi_auth.exceptions import XSTSError
 
 sys.path.insert(0, str(Path(__file__).parent))
 from _consent import drive_consent_until_loopback
+from _traffic import write_traffic_log
 
 if TYPE_CHECKING:
     pass
@@ -75,79 +76,20 @@ async def _drive_bedrock_device_code(page: Page, prompt: DeviceCodePrompt) -> No
     )
 
 
-_REDACT_HEADERS = {
-    "authorization",
-    "cookie",
-    "set-cookie",
-    "x-xbl-authorization",
-    "x-authorization",
-    "proxy-authorization",
-}
-
-
-def _redact_header_value(name: str, value: str) -> str:
-    if name.lower() in _REDACT_HEADERS:
-        return "<redacted>"
-    return value
-
-
-def _summarize_body(content: bytes | None) -> str:
-    if not content:
-        return "<empty>"
-    # Best-effort decompress gzip / zlib.
-    raw = content
-    if content[:2] == b"\x1f\x8b":
-        import gzip
-        with contextlib.suppress(Exception):
-            raw = gzip.decompress(content)
-    elif content[:2] in (b"\x78\x9c", b"\x78\x01", b"\x78\xda"):
-        import zlib
-        with contextlib.suppress(Exception):
-            raw = zlib.decompress(content)
-    try:
-        text = raw.decode("utf-8")
-    except UnicodeDecodeError:
-        return f"<{len(content)} bytes binary>"
-    if len(text) > 4000:
-        return text[:4000] + f"\n... [truncated, {len(text) - 4000} bytes more]"
-    return text
+_TRAFFIC_INTRO = (
+    "Captured via httpdbg while running `BedrockAuthManager.login(prime=True)`. "
+    "Authorization, Cookie, Set-Cookie, signature, and JWT-shaped fields are redacted."
+)
 
 
 def _write_traffic_log(records: HTTPRecords) -> None:
-    lines: list[str] = [
-        "# Bedrock auth chain — live HTTP traffic",
-        "",
-        "Captured via httpdbg while running `BedrockAuthManager.login(prime=True)`.",
-        "Authorization, Cookie, Set-Cookie and JWT-shaped headers are redacted.",
-        "",
-    ]
-    for idx, (_rid, rec) in enumerate(records.requests.items(), start=1):
-        if rec.method == "CONNECT":
-            continue
-        lines.append(f"## {idx}. `{rec.method} {rec.url}` → {rec.status_code}")
-        lines.append("")
-        lines.append("### Request headers")
-        lines.append("```")
-        for h in rec.request.headers:
-            lines.append(f"{h.name}: {_redact_header_value(h.name, h.value)}")
-        lines.append("```")
-        if rec.request.content:
-            lines.append("### Request body")
-            lines.append("```")
-            lines.append(_summarize_body(rec.request.content))
-            lines.append("```")
-        lines.append("### Response headers")
-        lines.append("```")
-        for h in rec.response.headers:
-            lines.append(f"{h.name}: {_redact_header_value(h.name, h.value)}")
-        lines.append("```")
-        lines.append("### Response body")
-        lines.append("```")
-        lines.append(_summarize_body(rec.response.content))
-        lines.append("```")
-        lines.append("")
-    TRAFFIC_LOG.write_text("\n".join(lines))
-    log.info("wrote %d-byte traffic log to %s", TRAFFIC_LOG.stat().st_size, TRAFFIC_LOG)
+    size = write_traffic_log(
+        records,
+        path=TRAFFIC_LOG,
+        title="Bedrock auth chain — live HTTP traffic",
+        intro=_TRAFFIC_INTRO,
+    )
+    log.info("wrote %d-byte traffic log to %s", size, TRAFFIC_LOG)
 
 
 async def test_bedrock_chain_end_to_end(browser_context: BrowserContext) -> None:

@@ -243,10 +243,22 @@ _XERR_MESSAGES: dict[int, str] = {
 }
 
 
-def xerr_to_exception(xerr: int | None) -> XSTSError:
-    """Return a typed exception for an XSTS ``XErr`` code."""
+def xerr_to_exception(xerr: int | None, *, body_excerpt: str | None = None) -> XSTSError:
+    """Return a typed exception for an XSTS ``XErr`` code.
+
+    Pass ``body_excerpt`` when the response body could not be parsed
+    (or did not contain an ``XErr`` field); it is appended to the
+    error message (truncated) so callers don't need to capture HTTP
+    traffic separately to diagnose unexpected server responses.
+    """
     if xerr is None:
-        return XSTSError("XSTS authorization failed (no XErr code in response)")
+        msg = "XSTS authorization failed (no XErr code in response)"
+        if body_excerpt is not None:
+            excerpt = body_excerpt[:300]
+            if len(body_excerpt) > 300:
+                excerpt += "…"
+            msg = f"{msg}; body={excerpt!r}"
+        return XSTSError(msg)
     cls = _XERR_MAP.get(xerr, XSTSError)
     msg = _XERR_MESSAGES.get(xerr, f"XSTS authorization failed with XErr {xerr}")
     return cls(msg, xerr=xerr)
