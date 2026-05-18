@@ -16,7 +16,7 @@ uv run --active python tests-e2e/bootstrap_login.py
 uv run --active pytest tests-e2e -v -m e2e
 ```
 
-`storage_state.json` is gitignored; treat it like a credential.
+`tests-e2e/.user-data/` is gitignored; treat it like a credential (it contains your live MS session).
 
 ## Architecture
 

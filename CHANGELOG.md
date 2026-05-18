@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-05-18
+
+### Fixed
+
+- **`login_browser_v2()` now auto-resolves `bind_host` / `redirect_path`
+  from the `client_id`'s registered redirect URI.** Previously the
+  hard-coded `redirect_path="/callback"` default was incompatible with
+  the `PRISM_LAUNCHER_CLIENT_ID` default (Prism's Azure app only
+  registers `http://127.0.0.1/`), causing the consent URL to be
+  rejected with `invalid_request`. Both parameters now default to
+  `None` and look up the correct host/path via
+  `resolve_browser_redirect()`; callers that explicitly pass a value
+  keep their old behavior.
+
+### Added
+
+- **`tests-e2e/`** — Playwright-driven end-to-end suite that runs the
+  real OAuth dance against `login.microsoftonline.com`,
+  `xboxlive.com`, and `api.minecraftservices.com`. Uses a persistent
+  Chromium profile (`launch_persistent_context`) so the user only logs
+  in once via `tests-e2e/bootstrap_login.py`. Marked `@pytest.mark.e2e`
+  and skipped by default (the unit suite stays hermetic via `respx`).
+
 ## [0.15.0] - 2026-05-18
 
 ### Changed

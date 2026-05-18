@@ -30,6 +30,7 @@ from .._constants import (
     MSA_SCOPE,
     MSA_TOKEN_URL,
     PRISM_LAUNCHER_CLIENT_ID,
+    resolve_browser_redirect,
 )
 from ..exceptions import MSAFlowError
 from .auth_code import acquire_msa_via_browser, acquire_msa_via_browser_v1
@@ -269,9 +270,9 @@ async def login_browser_v2(
     *,
     storage: TokenStorage | None = None,
     client_id: str = PRISM_LAUNCHER_CLIENT_ID,
-    bind_host: str = "127.0.0.1",
+    bind_host: str | None = None,
     bind_port: int = 0,
-    redirect_path: str = "/callback",
+    redirect_path: str | None = None,
     prompt: str | None = None,
     scope: str = MSA_SCOPE,
     open_browser: Callable[[str], None | Awaitable[None]] | None = None,
@@ -294,13 +295,19 @@ async def login_browser_v2(
         storage: Refresh-token persistence backend. Defaults to
             :class:`NullTokenStorage` (no persistence). Pass an
             explicit :class:`FileTokenStorage` for cross-run reuse.
-        client_id: MSA OAuth client_id. Defaults to the public
-            Minecraft Launcher client_id.
-        bind_host: Host to bind the local listener on
-            (``127.0.0.1`` by default).
+        client_id: MSA OAuth client_id. Defaults to PrismLauncher's
+            v2 client_id (which has a loopback redirect registered).
+        bind_host: Host to bind the local listener on. Defaults to the
+            host registered on the Azure-AD app for the given
+            ``client_id`` (via :func:`resolve_browser_redirect`), or
+            ``127.0.0.1`` if no override is known.
         bind_port: TCP port to bind to. ``0`` (default) picks a free port.
-        redirect_path: Path the OAuth redirect must hit
-            (``/callback`` by default).
+        redirect_path: Path the OAuth redirect must hit. Defaults to
+            the path registered on the Azure-AD app for the given
+            ``client_id`` (via :func:`resolve_browser_redirect`), or
+            ``/callback`` if no override is known. Passing the wrong
+            value here causes MS to reject the request with
+            ``invalid_request: ... redirect_uri ... not valid``.
         prompt: Optional ``prompt`` param to forward to the authorize
             endpoint (e.g. ``"select_account"`` to force the picker).
         scope: OAuth scope to request.
@@ -313,6 +320,12 @@ async def login_browser_v2(
         A :class:`MinecraftSession` carrying the Minecraft access token,
         UUID, username, and rotated refresh token.
     """
+    override = resolve_browser_redirect(client_id)
+    actual_host = bind_host if bind_host is not None else (override[0] if override else "127.0.0.1")
+    actual_path = (
+        redirect_path if redirect_path is not None else (override[1] if override else "/callback")
+    )
+
     actual_storage: TokenStorage = storage if storage is not None else NullTokenStorage()
 
     msa_tokens: MSATokens | None = None
@@ -331,9 +344,9 @@ async def login_browser_v2(
     if msa_tokens is None:
         msa_tokens = await acquire_msa_via_browser(
             client_id=client_id,
-            bind_host=bind_host,
+            bind_host=actual_host,
             bind_port=bind_port,
-            redirect_path=redirect_path,
+            redirect_path=actual_path,
             prompt=prompt,
             scope=scope,
             open_browser=open_browser,
