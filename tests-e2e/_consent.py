@@ -13,7 +13,7 @@ Currently handles:
 * Generic ``input[type=submit][value=Yes|Accept]`` consent buttons.
 * "Get a code to sign in" step-up auth — click "Use your password"
   then type the password from ``$MCAPI_E2E_MS_PASSWORD``. Records each
-  occurrence to ``STEP_UP_AUTH_LOG.md`` for later analysis.
+  occurrence to ``MS_PROMPT_LOG.md`` for later analysis.
 """
 
 from __future__ import annotations
@@ -31,36 +31,53 @@ log = logging.getLogger(__name__)
 async def _try_handle_password_step_up(page: Page, *, context: str) -> bool:
     """If MS is asking for password step-up, type it and submit.
 
+    Handles two variants:
+
+    * **Indirect**: a "Get a code to sign in" page that offers "Send
+      notification" + a "Use your password" link. We click the link
+      first, then the page transitions to a password input.
+    * **Direct**: the page is already a password prompt
+      (``<input type=password>`` is visible). The v1 device-code flow
+      drops the user straight here.
+
     ``context`` is a human-readable description of which flow we're in
     (e.g. ``"login_device_code_v2 / PRISM_LAUNCHER_CLIENT_ID"``); it's
     used in the step-up log entry.
 
     Returns True if a step-up wall was found and handled.
     """
-    # The "Get a code to sign in" page has a "Use your password" link.
-    try:
-        use_pw = page.get_by_text("Use your password", exact=True)
-        if not await use_pw.is_visible(timeout=300):
-            return False
-    except Exception:
-        return False
-
-    log.warning("consent driver: hit MS step-up auth wall, falling back to password (%s)", context)
-    await use_pw.click()
-    # Now the page is a regular password prompt — input[type=password].
     pw_input = page.locator("input[type=password]").first
-    await pw_input.wait_for(state="visible", timeout=15_000)
+
+    # Indirect variant: click the "Use your password" link first.
+    with contextlib.suppress(Exception):
+        use_pw = page.get_by_text("Use your password", exact=True)
+        if await use_pw.is_visible(timeout=300):
+            log.warning(
+                "consent driver: hit MS step-up (Get-a-code), choosing password (%s)", context
+            )
+            await use_pw.click()
+            await pw_input.wait_for(state="visible", timeout=15_000)
+            await _submit_password(page, pw_input)
+            return True
+
+    # Direct variant: password input already visible (v1 / Live-Connect
+    # flows drop the user here without an intermediate page).
+    with contextlib.suppress(Exception):
+        if await pw_input.is_visible(timeout=300):
+            log.warning("consent driver: hit MS step-up (direct password prompt) (%s)", context)
+            await _submit_password(page, pw_input)
+            return True
+
+    return False
+
+
+async def _submit_password(page: Page, pw_input) -> None:
     secret = os.environ.get("MCAPI_E2E_MS_PASSWORD")
     if not secret:
-        raise RuntimeError(
-            "MS demanded password step-up but $MCAPI_E2E_MS_PASSWORD is unset"
-        )
+        raise RuntimeError("MS demanded password step-up but $MCAPI_E2E_MS_PASSWORD is unset")
     await pw_input.fill(secret)
-    # Submit
-    submit = page.locator("input[type=submit], button[type=submit]").first
-    await submit.click()
-    log.info("consent driver: submitted password for step-up")
-    return True
+    await page.locator("input[type=submit], button[type=submit]").first.click()
+    log.info("consent driver: submitted password")
 
 
 async def drive_consent_until_loopback(
@@ -127,4 +144,3 @@ async def drive_consent_until_loopback(
                 log.info("consent driver: clicked generic consent")
                 continue
     log.warning("consent driver: timed out without seeing the loopback redirect")
-

@@ -47,7 +47,8 @@ async def test_login_browser_v2(browser_context: BrowserContext) -> None:
             try:
                 await page.goto(url, wait_until="domcontentloaded", timeout=30_000)
                 await drive_consent_until_loopback(
-                    page, expected_redirect_host_prefix=loopback_prefix,
+                    page,
+                    expected_redirect_host_prefix=loopback_prefix,
                     flow_context="login_browser_v2 / PRISM_LAUNCHER_CLIENT_ID",
                 )
             except Exception as e:

@@ -11,7 +11,7 @@ flow even when the persisted profile already has a valid session
 The shared consent driver in :mod:`_consent` falls back to the
 ``MCAPI_E2E_MS_PASSWORD`` env var if it sees the "Get a code to sign
 in" wall. Each such occurrence is meant to be recorded in
-``STEP_UP_AUTH_LOG.md``.
+``MS_PROMPT_LOG.md``.
 """
 
 from __future__ import annotations
@@ -29,7 +29,7 @@ from mcapi_auth import login_device_code_v2
 from mcapi_auth.auth.msa import DeviceCodePrompt
 
 sys.path.insert(0, str(Path(__file__).parent))
-from _consent import drive_consent_until_loopback  # noqa: E402
+from _consent import drive_consent_until_loopback
 
 log = logging.getLogger(__name__)
 
