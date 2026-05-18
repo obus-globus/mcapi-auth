@@ -529,6 +529,24 @@ mgr = BedrockAuthManager.load_json(state.load())
 cert = await mgr.get_certificate_chain()
 ```
 
+`BedrockAuthManager.login()` accepts both v1 and v2 client_ids. By
+default it builds a `MsaApplicationConfig.v1_launcher(client_id=
+bedrock_client_id)` and threads the matching `device_code_url` /
+`token_url` / `scope` through the MSA layer — so every Bedrock
+client_id (Win32, Android, iOS, Nintendo, PlayStation), which is only
+registered against Microsoft's legacy `login.live.com/oauth20_*.srf`
+endpoints, works without an explicit config.
+
+> **Bootstrap shortcut:** the Bedrock-Win32 client_id is registered
+> against a custom-protocol redirect that browsers can't follow, so for
+> a first-time browser-driven bootstrap you can drive the MSA leg with
+> the Java launcher's client_id (`MINECRAFT_LAUNCHER_V1_CLIENT_ID`) —
+> XBL entitlement is keyed off the resulting Xbox profile, not off the
+> MSA client_id — and pass `bedrock_client_id=BEDROCK_WIN32_CLIENT_ID`
+> to `BedrockAuthManager.from_msa(...)` so the rest of the chain still
+> targets the Bedrock relying party. The refreshed snapshot stores the
+> Bedrock client_id and uses it on subsequent refreshes.
+
 Persistence keeps the device keypair + UUID stable across runs (Xbox
 remembers them as a single device identity), and only the stages whose
 inputs actually changed are invalidated on refresh — e.g. an MSA
@@ -585,7 +603,7 @@ the v1 and v2 `authorize` endpoints. Use the listed flow:
 | `bedrock-ios`          | v1   | OOB only                                                 | `login_browser_v1`  |
 | `bedrock-nintendo`     | v1   | OOB only                                                 | `login_browser_v1`  |
 | `bedrock-playstation`  | v1   | OOB only                                                 | `login_browser_v1`  |
-| `bedrock-win32`        | v1   | **broken upstream** (OOB returns `invalid_request`)      | — |
+| `bedrock-win32`        | v1   | **broken upstream** for OOB. Use `java` / `MINECRAFT_LAUNCHER_V1_CLIENT_ID` for the MSA leg and `bedrock_client_id=BEDROCK_WIN32_CLIENT_ID` on `BedrockAuthManager` — XBL entitlement keys off the resulting Xbox profile, not the MSA client_id. | (MSA via `java`) |
 | `xbox-app-ios`         | v1   | OOB only                                                 | `login_browser_v1`  |
 | `xbox-gamepass-ios`    | v1   | OOB only                                                 | `login_browser_v1`  |
 | `prism` *(default)*    | v2   | `http://{127.0.0.1,localhost}:*/` (root path)            | `login_browser_v2` or `login_device_code_v2` |
