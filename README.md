@@ -364,6 +364,35 @@ mojang_sig = certs.public_key_signature_v2_bytes    # base64-decoded
 base64-decode for you. No `cryptography` dependency — load the keys
 with your preferred crypto library if you need to sign.
 
+## PlayFab login (Bedrock telemetry)
+
+Minecraft: Bedrock Edition logs into PlayFab in addition to Xbox Live,
+using an XSTS token. Once authenticated you get a PlayFab entity token
+(short-lived JWT used by the title service), a stable PlayFab account
+id, and a long-lived session ticket.
+
+```python
+from mcapi_auth import (
+    BEDROCK_PLAYFAB_TITLE_ID,
+    playfab_get_entity_token,
+    playfab_login_with_xbox,
+)
+
+# `xsts` here is an mcapi_auth.XSTSToken — for PlayFab you usually
+# want an XSTS issued against rp `http://playfab.xboxlive.com/`,
+# which differs from the Minecraft RP. Get it however you like; this
+# function only consumes the token.
+pf = await playfab_login_with_xbox(xsts, title_id=BEDROCK_PLAYFAB_TITLE_ID)
+print(pf.play_fab_id, pf.session_ticket, pf.entity_token.expires_at)
+
+# Refresh just the entity token later, no XSTS round-trip needed:
+new_entity = await playfab_get_entity_token(pf.entity_token)
+```
+
+This module covers the PlayFab piece only — the rest of Bedrock's
+client chain (ES384 keypair, Mojang-signed cert chain,
+``MinecraftMultiplayerToken``) isn't implemented yet.
+
 ## More examples
 
 See [`examples/`](examples/) for runnable scripts covering each entry

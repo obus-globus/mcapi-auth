@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-05-18
+
+### Added
+
+- **PlayFab login** (Bedrock telemetry / title service):
+  - ``PlayFabToken`` (entity token + PlayFab account id + session ticket).
+  - ``PlayFabEntityToken`` (the ``X-EntityToken`` JWT + entity id/type +
+    expiry). ``PlayFabEntityToken.from_api_payload`` flattens the
+    PlayFab API's nested ``Entity`` object.
+  - ``playfab_login_with_xbox(xsts, *, title_id=...)`` — exchanges an
+    XSTS token for a ``PlayFabToken`` against
+    ``POST {title}.playfabapi.com/Client/LoginWithXbox``. Defaults to
+    the retail Bedrock title id (``20CA2``); pass
+    ``EDU_PLAYFAB_TITLE_ID`` for Education Edition.
+  - ``playfab_get_entity_token(entity_token)`` — refreshes only the
+    entity token (cheap; no XSTS round-trip) against
+    ``POST {title}.playfabapi.com/Authentication/GetEntityToken``.
+  - ``PlayFabError`` exposes ``status_code``, ``error``,
+    ``error_message``, ``error_code``.
+  - ``BEDROCK_PLAYFAB_TITLE_ID`` (``"20CA2"``) and
+    ``EDU_PLAYFAB_TITLE_ID`` (``"6955F"``) constants.
+
+  Note: this is the PlayFab piece only. Bedrock's full chain (ES384
+  keypair, ``mcChain`` signing, multiplayer token) is still pending.
+
 ## [0.8.3] - 2026-05-17
 
 ### Changed

@@ -58,6 +58,15 @@ from .player_certificates import (
     MinecraftPlayerCertificates,
     fetch_player_certificates,
 )
+from .playfab import (
+    BEDROCK_PLAYFAB_TITLE_ID,
+    EDU_PLAYFAB_TITLE_ID,
+    PlayFabEntityToken,
+    PlayFabError,
+    PlayFabToken,
+    playfab_get_entity_token,
+    playfab_login_with_xbox,
+)
 from .profile import (
     NameLookupResult,
     ProfileProperty,
@@ -91,9 +100,11 @@ from .textures import (
 )
 
 __all__ = [
+    "BEDROCK_PLAYFAB_TITLE_ID",
     "DEFAULT_API_USER_AGENT",
     "DEFAULT_HTTP_TIMEOUT",
     "DEFAULT_REALMS_GAME_VERSION",
+    "EDU_PLAYFAB_TITLE_ID",
     "BadRequestError",
     "CapeEntry",
     "CapeTexture",
@@ -112,6 +123,9 @@ __all__ = [
     "NameTakenError",
     "NotFoundError",
     "OwnProfile",
+    "PlayFabEntityToken",
+    "PlayFabError",
+    "PlayFabToken",
     "ProfileProperty",
     "PublicProfile",
     "RateLimitedError",
@@ -157,5 +171,7 @@ __all__ = [
     "is_realms_available",
     "is_realms_tos_agreed",
     "is_server_blocked",
+    "playfab_get_entity_token",
+    "playfab_login_with_xbox",
     "reset_skin",
 ]
