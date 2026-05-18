@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-05-18
+
+### Added
+
+- **Bedrock Edition client chain primitives** (new `mcapi_auth.api.bedrock`
+  module, requires the optional `bedrock` extra → `pip install
+  mcapi-auth[bedrock]`):
+  - ``BedrockKeyPair`` — ES384 / NIST P-384 client identity keypair with
+    ``.generate()``, PEM round-trip (``.to_pem()`` / ``.from_pem()``),
+    and SubjectPublicKeyInfo DER / base64 helpers for wire use.
+  - ``MinecraftCertificateChain`` — wraps the 2-element
+    ``[mojangJwt, identityJwt]`` chain Mojang returns and exposes
+    ``xuid``, ``display_name``, ``identity_uuid``, and ``expires_at``
+    (earliest of the two ``exp`` claims).
+  - ``MinecraftSession`` / ``MinecraftMultiplayerToken`` for the
+    `authorization.franchise.minecraft-services.net` session+multiplayer
+    endpoints (PlayFab → session JWT → multiplayer signed token).
+    ``MinecraftMultiplayerToken.uuid`` derives the Bedrock player UUID
+    via the Java-compatible MD5 namespace (``pocket-auth-1-xuid:<xuid>``).
+  - ``decode_jwt_payload(jwt)`` — base64url middle-segment parser for
+    unverified inspection of Bedrock JWTs.
+  - ``minecraft_authenticate(xsts, key_pair)`` — POSTs to
+    `multiplayer.minecraft.net/authentication` with a Bedrock-scoped
+    XSTS token (the caller is responsible for obtaining one — the
+    existing ``authenticate_xsts`` helper is Java-scoped).
+  - ``start_minecraft_session(playfab_session_ticket, *, game_version,
+    device_id)`` and ``start_minecraft_multiplayer_session(session,
+    key_pair)``.
+- ``cryptography>=43`` is exposed as an optional dependency under the
+  ``bedrock`` extra; ``import mcapi_auth.api.bedrock`` raises a clear
+  ``ImportError`` with install instructions if it is missing.
+
+### Notes
+
+- This is a focused slice of Bedrock support — keypair, mcChain
+  authentication, session token, and signed multiplayer token. Full
+  Sisu / XBL-device-token flows and a high-level ``BedrockAuthManager``
+  are out of scope for 0.10.0.
+
 ## [0.9.0] - 2026-05-18
 
 ### Added

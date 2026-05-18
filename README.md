@@ -389,9 +389,52 @@ print(pf.play_fab_id, pf.session_ticket, pf.entity_token.expires_at)
 new_entity = await playfab_get_entity_token(pf.entity_token)
 ```
 
-This module covers the PlayFab piece only — the rest of Bedrock's
-client chain (ES384 keypair, Mojang-signed cert chain,
-``MinecraftMultiplayerToken``) isn't implemented yet.
+This module covers the PlayFab piece only — see the Bedrock section
+below for the rest of the client chain.
+
+## Bedrock Edition client chain
+
+Optional, requires the ``[bedrock]`` extra (which pulls in
+``cryptography>=43`` for the ES384 keypair):
+
+```bash
+pip install mcapi-auth[bedrock]
+```
+
+Once an XSTS token scoped to Bedrock's relying party
+(``https://multiplayer.minecraft.net/``) and a PlayFab session ticket
+are in hand, you can run the rest of the chain:
+
+```python
+from mcapi_auth.api.bedrock import (
+    generate_bedrock_session_keypair,
+    minecraft_authenticate,
+    start_minecraft_session,
+    start_minecraft_multiplayer_session,
+)
+from uuid import uuid4
+
+key_pair = generate_bedrock_session_keypair()        # ES384 / P-384
+chain = await minecraft_authenticate(bedrock_xsts, key_pair)
+print(chain.xuid, chain.display_name, chain.expires_at)
+
+session = await start_minecraft_session(
+    pf.session_ticket,
+    game_version="1.21.50",
+    device_id=uuid4(),
+)
+mp = await start_minecraft_multiplayer_session(session, key_pair)
+print(mp.xuid, mp.uuid, mp.token)
+```
+
+The ES384 keypair should be persisted across launches — Mojang binds
+it to the player's account in the ``identityJwt``. Use
+``BedrockKeyPair.to_pem()`` / ``BedrockKeyPair.from_pem()`` for storage.
+
+> **Note:** ``mcapi_auth``'s built-in ``authenticate_xsts()`` is
+> scoped to the Java relying party. Obtaining a Bedrock-scoped XSTS
+> (via the Sisu / XBL-device-token dance) is out of scope for 0.10.0 —
+> callers must currently provide one themselves.
 
 ## More examples
 

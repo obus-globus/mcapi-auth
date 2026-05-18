@@ -1,6 +1,6 @@
 [project]
 name = "mcapi-auth"
-version = "0.9.0"
+version = "0.10.0"
 description = "Async Python client for Microsoft → Minecraft authentication and the Mojang REST APIs (typed, httpx-based)"
 readme = "README.md"
 license = { text = "MIT" }
@@ -25,6 +25,9 @@ dependencies = [
     "whenever>=0.10.0",
 ]
 
+[project.optional-dependencies]
+bedrock = ["cryptography>=43"]
+
 [project.urls]
 Repository = "https://github.com/clawdbot-silly-waddle/mcapi-auth"
 Issues = "https://github.com/clawdbot-silly-waddle/mcapi-auth/issues"
@@ -39,6 +42,7 @@ packages = ["src/mcapi_auth"]
 [dependency-groups]
 dev = [
     "basedpyright>=1.39.4",
+    "cryptography>=43",
     "hypothesis>=6.152.7",
     "pytest>=9.0.3",
     "pytest-asyncio>=1.3.0",
