@@ -285,6 +285,10 @@ async def test_api_coverage(browser_context: BrowserContext) -> None:
         "blocked_servers.fetch_blocked_servers()",
         lambda: blocked_servers.fetch_blocked_servers(),
     )
+    await section(
+        "blocked_servers.is_server_blocked('hypixel.net')",
+        lambda: blocked_servers.is_server_blocked("hypixel.net"),
+    )
 
     # ---- authenticated own-account endpoints ----
     own = await section(
@@ -322,6 +326,14 @@ async def test_api_coverage(browser_context: BrowserContext) -> None:
     await section(
         "realms.is_realms_tos_agreed(session)",
         lambda: realms.is_realms_tos_agreed(session),
+    )
+    # accept_realms_tos is idempotent server-side; re-posting on an
+    # account that's already agreed returns 204, which is what we
+    # want to live-cover. Don't fail the run if the API decides to
+    # 4xx (newer servers might).
+    await section(
+        "realms.accept_realms_tos(session) [idempotent]",
+        lambda: realms.accept_realms_tos(session),
     )
     worlds = await section(
         "realms.fetch_realms_worlds(session)",

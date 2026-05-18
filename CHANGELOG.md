@@ -32,6 +32,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   fire up `httpdbg` to see what the server actually returned.
   `xerr_to_exception()` gains a new `body_excerpt=` keyword argument.
 
+### Tests
+
+- **Live E2E coverage for `accept_realms_tos` and `is_server_blocked`**
+  in `tests-e2e/test_api_coverage.py`. The Realms TOS POST is
+  idempotent (re-posting on an already-agreed account returns 204),
+  so the existing live account exercises it cleanly.
+- **New `tests-e2e/test_bedrock_chain_live.py`** drives the Bedrock
+  chain segments that `get_multiplayer_token()` shortcuts past —
+  `get_certificate_chain()` (Bedrock-RP SISU → `minecraft.net/
+  authentication`) and `get_bedrock_sisu()` — against a
+  Bedrock-entitled account. Loads a previously-primed snapshot from
+  `~/.config/mcapi-auth-e2e/bedrock_chain_state.json` (gated on
+  `MCAPI_E2E_BEDROCK=1`), exercises the chain, then writes the
+  refreshed snapshot back. All 28 public API endpoints are now
+  live-verified end-to-end.
+
 ## [0.16.1] - 2026-05-18
 
 ### Fixed
