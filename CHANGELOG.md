@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **`BedrockAuthManager.login()` no longer rejects v1 client_ids.**
+  Every Bedrock client_id (Win32, Android, iOS, Nintendo, PlayStation)
+  is registered against Microsoft's legacy v1 / Live-Connect endpoints,
+  not the v2 Azure-AD `consumers` endpoint, but the previous
+  implementation hard-coded v2 and raised `ValueError` when handed a
+  v1 config. `login()` now defaults to
+  `MsaApplicationConfig.v1_launcher(client_id=bedrock_client_id)`,
+  threads `device_code_url` / `token_url` / `scope` / `is_v1` from the
+  config into `request_device_code` and
+  `poll_for_device_code_token`, and works for both v1 (Bedrock,
+  Minecraft launcher) and v2 (custom Azure-AD app) client_ids.
+
 ## [0.16.1] - 2026-05-18
 
 ### Fixed

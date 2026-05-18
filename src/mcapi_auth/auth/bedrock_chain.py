@@ -253,23 +253,27 @@ class BedrockAuthManager:
         the caller only needs the cert chain.
         """
         actual_app = (
-            app if app is not None else MsaApplicationConfig.v2(client_id=bedrock_client_id)
+            app
+            if app is not None
+            else MsaApplicationConfig.v1_launcher(client_id=bedrock_client_id)
         )
-        if actual_app.is_v1:
-            raise ValueError(
-                "BedrockAuthManager.login() targets the v2 Azure-AD endpoints "
-                "(the Bedrock client_ids are registered there); pass a v2 "
-                "MsaApplicationConfig, not v1_launcher()."
-            )
         prompt, pending = await request_device_code(
-            client_id=actual_app.client_id, http_client=http_client
+            client_id=actual_app.client_id,
+            scope=actual_app.scope,
+            device_code_url=actual_app.device_code_url,
+            is_v1=actual_app.is_v1,
+            http_client=http_client,
         )
         if on_device_code is not None:
             await _invoke_callback(on_device_code, prompt)
         else:
             print(prompt.message or f"Visit {prompt.verification_uri} and enter {prompt.user_code}")
         msa = await poll_for_device_code_token(
-            pending, client_id=actual_app.client_id, http_client=http_client
+            pending,
+            client_id=actual_app.client_id,
+            token_url=actual_app.token_url,
+            is_v1=actual_app.is_v1,
+            http_client=http_client,
         )
         mgr = cls(
             app=actual_app,
