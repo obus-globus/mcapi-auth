@@ -34,6 +34,19 @@ Runnable examples covering each entry point and helper. Sorted from
   callback as a route in your own HTTP server (FastAPI, Flask, …).
   Shows how to handle the CSRF `state` and the PKCE verifier round-trip.
 
+## Bedrock / PlayFab
+
+- **[`playfab_login.py`](playfab_login.py)** — exchange a PlayFab-scoped
+  XSTS for a `PlayFabToken` (session ticket + entity token) against
+  the Bedrock retail title. Note the XSTS `relying_party` differs from
+  the Java flow.
+
+- **[`bedrock_minimal.py`](bedrock_minimal.py)** — the full Bedrock
+  client chain end-to-end: MSA → XBL → Bedrock-scoped XSTS + PlayFab,
+  ES384 keypair (persisted to disk), `minecraft_authenticate` to get
+  the `[mojangJwt, identityJwt]` chain, then session JWT and signed
+  multiplayer token. Requires the `[bedrock]` extra.
+
 ## Helpers
 
 - **[`entitlements.py`](entitlements.py)** — call
