@@ -453,6 +453,38 @@ print(describe_minecraft_token(chain.minecraft_holder.get_cached().access_token)
 All helpers are read-only, redact token bodies, and never make network
 calls.
 
+## Multiple accounts — `AccountManager`
+
+For programs juggling several accounts (chat bridges, alt managers,
+multi-account servers), `AccountManager` stores chains as one JSON
+file per account under `~/.local/state/mcapi_auth/accounts/`:
+
+```python
+from mcapi_auth import AccountManager, AuthChain, MsaApplicationConfig
+
+mgr = AccountManager()  # or AccountManager(Path("/var/lib/mybot/accounts"))
+
+# After login, save the chain under a label (the username is a natural choice):
+chain = await AuthChain.login(app=MsaApplicationConfig.v2(), prompt=...)
+profile = await chain.get_profile()
+await mgr.save(profile.username, chain)
+
+# Next run:
+print(mgr.list_labels())          # ['Notch', 'jeb_', ...]
+chain = await mgr.load("Notch")
+mc = await chain.get_minecraft_token()
+
+# Auto-persist on token rotation:
+chain.on_change(mgr.make_listener_for("Notch", chain))
+
+# Or restore everything at once:
+chains = await mgr.load_all()      # dict[str, AuthChain]
+```
+
+Labels must match `[A-Za-z0-9._-]` and start with an alphanumeric
+(rejects `..`, `/`, leading dots). Files are written atomically with
+`0600` permissions. The default directory honours `XDG_STATE_HOME`.
+
 ## Player chat-signing certificates (1.19+)
 
 Minecraft 1.19 introduced signed chat (and chat reporting in 1.19.1+);

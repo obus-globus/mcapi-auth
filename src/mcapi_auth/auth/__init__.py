@@ -48,6 +48,13 @@ from ..exceptions import (
     XSTSError,
     xerr_to_exception,
 )
+from .accounts import (
+    AccountManager,
+    AccountManagerError,
+    InvalidAccountLabelError,
+    UnknownAccountError,
+    default_accounts_dir,
+)
 from .app_config import MsaApplicationConfig
 from .auth_code import (
     PKCEChallenge,
@@ -122,6 +129,8 @@ __all__ = [
     "PRISM_LAUNCHER_REDIRECT_URI",
     "XBOX_APP_IOS_CLIENT_ID",
     "XBOX_GAMEPASS_IOS_CLIENT_ID",
+    "AccountManager",
+    "AccountManagerError",
     "AdultVerificationRequiredError",
     "AuthChain",
     "AuthorizationDeclinedError",
@@ -136,6 +145,7 @@ __all__ = [
     "Entitlements",
     "FileTokenStorage",
     "Holder",
+    "InvalidAccountLabelError",
     "JoinServerError",
     "MSAAuthError",
     "MSAFlowError",
@@ -155,6 +165,7 @@ __all__ = [
     "SISUTokens",
     "StageSummary",
     "TokenStorage",
+    "UnknownAccountError",
     "VerifyAgeRequiredError",
     "XSTSError",
     "XSTSToken",
@@ -170,6 +181,7 @@ __all__ = [
     "cookies_to_header",
     "create_pkce_challenge",
     "decode_minecraft_access_token",
+    "default_accounts_dir",
     "default_storage_path",
     "derive_entitlement_flags",
     "describe_chain",

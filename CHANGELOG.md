@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`AccountManager` — multi-account directory store.** Manage many
+  `AuthChain` instances on disk, one JSON file per account. Embeds the
+  `MsaApplicationConfig` alongside the chain snapshot so restoring is
+  a single call. Atomic writes, 0600 permissions, default location is
+  `~/.local/state/mcapi_auth/accounts/` (XDG-respecting). Includes
+  `make_listener_for(label, chain)` for hooking `chain.on_change` so
+  token rotations auto-persist. Errors: `AccountManagerError`,
+  `InvalidAccountLabelError`, `UnknownAccountError`.
 - **`join_server` convenience overload.** `join_server()` now accepts a
   `MinecraftSession` positional argument as a shorthand for passing
   `access_token=` and `uuid=` explicitly. The original two-keyword form
