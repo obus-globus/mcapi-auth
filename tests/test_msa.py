@@ -189,5 +189,5 @@ def test_module_imports_cleanly() -> None:
     # Sanity-check that public re-exports are wired up.
     from mcapi_auth import auth as mcauth
 
-    assert mcauth.login is not None
-    assert inspect.iscoroutinefunction(mcauth.login)
+    assert mcauth.login_device_code_v1 is not None
+    assert inspect.iscoroutinefunction(mcauth.login_device_code_v1)

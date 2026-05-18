@@ -4,10 +4,10 @@
 
 ```python
 import asyncio
-from mcapi_auth import login
+from mcapi_auth import login_device_code_v1
 
 async def main():
-    session = await login()
+    session = await login_device_code_v1()
     print(session.access_token)
 
 asyncio.run(main())
@@ -20,9 +20,9 @@ stored refresh token is used silently.
 ## Browser auth-code
 
 ```python
-from mcapi_auth import login_via_browser
+from mcapi_auth import login_browser_v2
 
-session = await login_via_browser()
+session = await login_browser_v2()
 ```
 
 Opens the default browser and listens on `127.0.0.1:<random>` for the
@@ -38,17 +38,17 @@ valid:
 
 ```python
 from pathlib import Path
-from mcapi_auth import MinecraftSession, login
+from mcapi_auth import MinecraftSession, login_device_code_v1
 
 cache = Path("session.json")
 
 if cache.exists():
     session = MinecraftSession.load(cache.read_text())
     if session.minecraft_token_expired():
-        session = await login()        # refresh-token path, no UI
+        session = await login_device_code_v1()        # refresh-token path, no UI
         cache.write_text(session.dump())
 else:
-    session = await login()
+    session = await login_device_code_v1()
     cache.write_text(session.dump())
 ```
 

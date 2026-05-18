@@ -31,6 +31,7 @@ from typing import Self
 from .._constants import (
     LIVE_CONNECT_AUTHORIZE_URL,
     LIVE_CONNECT_DESKTOP_REDIRECT_URI,
+    LIVE_CONNECT_DEVICE_CODE_URL,
     LIVE_CONNECT_SCOPE_MBI_SSL,
     LIVE_CONNECT_TOKEN_URL,
     MINECRAFT_LAUNCHER_V1_CLIENT_ID,
@@ -60,9 +61,9 @@ class MsaApplicationConfig:
         authorize_url: Authorization endpoint. v2 by default; flip to
             :data:`mcapi_auth.LIVE_CONNECT_AUTHORIZE_URL` for v1.
         token_url: Token endpoint. v2 by default.
-        device_code_url: Device-code endpoint. v1 endpoints don't have
-            a device-code flow; for v1 configs this is left at the v2
-            value but should not be used.
+        device_code_url: Device-code endpoint. Auto-set to the v1
+            (``oauth20_connect.srf``) or v2 (``v2.0/devicecode``) URL
+            depending on which classmethod built the config.
         redirect_uri: Default redirect URI for the browser flow.
             ``None`` means "let the caller pick" (the loopback flow
             will pick a free port + ``/callback`` unless overridden).
@@ -120,7 +121,7 @@ class MsaApplicationConfig:
             scope=scope,
             authorize_url=LIVE_CONNECT_AUTHORIZE_URL,
             token_url=LIVE_CONNECT_TOKEN_URL,
-            device_code_url=MSA_DEVICE_CODE_URL,  # unused for v1
+            device_code_url=LIVE_CONNECT_DEVICE_CODE_URL,
             redirect_uri=redirect_uri,
             xbl_use_d_prefix=False,
             is_v1=True,

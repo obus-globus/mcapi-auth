@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-05-18
+
+### Changed
+
+- **Breaking: renamed and split the headline ``login`` entry points** so
+  every name encodes both the **mechanism** and the **API version**. The
+  old unqualified ``login()`` is gone; callers must pick explicitly.
+  - ``login()`` (v2 device-code) → ``login_device_code_v2()``
+  - ``login_via_browser()`` → ``login_browser_v2()``
+  - ``login_via_browser_v1()`` → ``login_browser_v1()``
+  - **New:** ``login_device_code_v1()`` — v1 / Live-Connect device-code
+    flow with the official Minecraft Launcher's v1 client_id as the
+    default. Hits ``login.live.com/oauth20_connect.srf`` for the
+    device-code request and ``login.live.com/oauth20_token.srf`` for the
+    poll, uses the ``MBI_SSL`` scope, and sends the XBL ``RpsTicket``
+    without the ``d=`` prefix (parity with the official launcher).
+- ``AuthChain.login()`` now accepts a ``flow: AuthChainFlow`` keyword
+  (``Literal["device_code_v1", "device_code_v2"]``), defaulting to
+  ``"device_code_v1"``. v1 is the new default everywhere because it
+  matches what the official Minecraft Launcher does (more permissive
+  XBL tokens, no Azure-AD consent prompts).
+- ``request_device_code`` / ``poll_for_device_code_token`` gained
+  ``scope``, ``device_code_url`` / ``token_url`` and ``is_v1`` keyword
+  arguments so the same primitives drive both v1 and v2 device-code.
+  Defaults preserve the previous v2 behaviour.
+- ``MsaApplicationConfig.v1_launcher()`` now sets ``device_code_url`` to
+  the proper ``oauth20_connect.srf`` endpoint (was previously left at
+  the v2 URL with a comment claiming v1 had no device-code flow — it
+  does, per RaphiMC/MinecraftAuth's ``MsaEnvironment.LIVE``).
+
+### Added
+
+- New constant ``LIVE_CONNECT_DEVICE_CODE_URL =
+  "https://login.live.com/oauth20_connect.srf"``.
+- New type alias ``AuthChainFlow`` for the ``flow=`` keyword on
+  ``AuthChain.login``.
+
 ## [0.14.0] - 2026-05-18
 
 ### Changed

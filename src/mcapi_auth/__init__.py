@@ -1,4 +1,5 @@
 """mcapi-auth — Microsoft → Minecraft auth **and** Mojang REST APIs.
+
 A single async, typed Python library that covers:
 
 * :mod:`mcapi_auth.auth` — the 5-stage Microsoft → Mojang token chain
@@ -13,10 +14,10 @@ The top level re-exports the everyday names from both subpackages so the
 common case is a one-liner::
 
     import asyncio
-    from mcapi_auth import login, get_own_profile
+    from mcapi_auth import login_device_code_v1, get_own_profile
 
     async def main() -> None:
-        session = await login()
+        session = await login_device_code_v1()
         profile = await get_own_profile(session)
         print(profile.name, profile.id)
 
@@ -154,9 +155,10 @@ from .auth import (
     is_browser_unsupported,
     is_v1_client_id,
     join_server,
-    login,
-    login_via_browser,
-    login_via_browser_v1,
+    login_browser_v1,
+    login_browser_v2,
+    login_device_code_v1,
+    login_device_code_v2,
     login_with_cookies_msa_v1,
     login_with_cookies_msa_v2_loopback,
     login_with_cookies_sisu,
@@ -352,9 +354,10 @@ __all__ = [
     "is_server_blocked",
     "is_v1_client_id",
     "join_server",
-    "login",
-    "login_via_browser",
-    "login_via_browser_v1",
+    "login_browser_v1",
+    "login_browser_v2",
+    "login_device_code_v1",
+    "login_device_code_v2",
     "login_with_cookies_msa_v1",
     "login_with_cookies_msa_v2_loopback",
     "login_with_cookies_sisu",

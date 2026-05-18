@@ -6,11 +6,11 @@ users. To tell them apart, hit `/entitlements/mcstore` directly.
 
 import asyncio
 
-from mcapi_auth import derive_entitlement_flags, fetch_entitlements, login
+from mcapi_auth import derive_entitlement_flags, fetch_entitlements, login_device_code_v1
 
 
 async def main() -> None:
-    session = await login()
+    session = await login_device_code_v1()
 
     raw = await fetch_entitlements(session.access_token)
     print(f"Raw items: {list(raw.items)}")

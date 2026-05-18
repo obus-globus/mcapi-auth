@@ -20,7 +20,7 @@ Typical usage::
     # msa.access_token / msa.refresh_token are now valid.
 
 For the *full* MS → Xbox → Mojang chain returning a
-``MinecraftSession``, see :func:`mcapi_auth.login_via_browser`.
+``MinecraftSession``, see :func:`mcapi_auth.login_browser_v2`.
 """
 
 import asyncio

@@ -44,6 +44,7 @@ MSA_SCOPE: Final = "XboxLive.signin offline_access"
 # and the ``service::user.auth.xboxlive.com::MBI_SSL`` scope.
 LIVE_CONNECT_AUTHORIZE_URL: Final = "https://login.live.com/oauth20_authorize.srf"
 LIVE_CONNECT_TOKEN_URL: Final = "https://login.live.com/oauth20_token.srf"
+LIVE_CONNECT_DEVICE_CODE_URL: Final = "https://login.live.com/oauth20_connect.srf"
 LIVE_CONNECT_SCOPE_MBI_SSL: Final = "service::user.auth.xboxlive.com::MBI_SSL"
 
 # Compressed Live-Connect form of the launcher client_id. Same logical
@@ -151,8 +152,8 @@ def resolve_client_id(name_or_id: str) -> str:
 #   xbox-gamepass-ios) NEVER accept loopback redirects. Their Azure app
 #   registrations only include the OOB redirect
 #   (``https://login.live.com/oauth20_desktop.srf``). Use
-#   :func:`mcapi_auth.auth.flow.login_via_browser_v1` (paste-back) for
-#   these — :func:`login_via_browser` doesn't apply.
+#   :func:`mcapi_auth.auth.flow.login_browser_v1` (paste-back) for
+#   these — :func:`login_browser_v2` doesn't apply.
 # * Only two v2 client_ids in the catalog have a loopback URL registered
 #   at all — prism and liquidlauncher (below). Both ``edu`` and
 #   ``office365`` are registered for non-loopback (web app) URIs only.
@@ -167,13 +168,13 @@ KNOWN_CLIENT_REDIRECTS: Final[dict[str, tuple[str, str]]] = {
 }
 
 
-# Client_ids for which :func:`mcapi_auth.auth.flow.login_via_browser`
+# Client_ids for which :func:`mcapi_auth.auth.flow.login_browser_v2`
 # (PKCE + loopback against the v2 consumers endpoint) cannot succeed.
 # Includes:
 #
 # 1. v1 / Live-Connect client_ids: the v2 endpoint rejects these as
 #    ``AADSTS70001 (client_not_found)``. Their browser flow IS
-#    :func:`login_via_browser_v1` (OOB paste-back), which is auto-routed
+#    :func:`login_browser_v1` (OOB paste-back), which is auto-routed
 #    by liquidchat-style CLIs when ``is_v1_client_id`` returns True.
 # 2. v2 client_ids whose Azure app has no loopback URL registered
 #    (``edu``, ``office365``). These need device-code flow.
@@ -188,7 +189,7 @@ BROWSER_UNSUPPORTED_CLIENT_IDS: Final[frozenset[str]] = frozenset(
         EDU_CLIENT_ID,
         OFFICE365_API_EDITOR_CLIENT_ID,
         # v1 / Live-Connect IDs — incompatible with the v2 consumers
-        # endpoint that ``login_via_browser`` targets.
+        # endpoint that ``login_browser_v2`` targets.
         MINECRAFT_LAUNCHER_V1_CLIENT_ID,
         BEDROCK_WIN32_CLIENT_ID,
         BEDROCK_ANDROID_CLIENT_ID,
@@ -204,7 +205,7 @@ BROWSER_UNSUPPORTED_CLIENT_IDS: Final[frozenset[str]] = frozenset(
 def resolve_browser_redirect(client_id: str) -> tuple[str, str] | None:
     """Return ``(bind_host, redirect_path)`` if ``client_id`` has a known override.
 
-    Used by callers of :func:`mcapi_auth.auth.flow.login_via_browser` to
+    Used by callers of :func:`mcapi_auth.auth.flow.login_browser_v2` to
     match the redirect URI registered on the Azure-AD app. Returns
     ``None`` if the caller should keep the defaults (``127.0.0.1``,
     ``/callback``).
@@ -215,7 +216,7 @@ def resolve_browser_redirect(client_id: str) -> tuple[str, str] | None:
 def is_browser_unsupported(client_id: str) -> bool:
     """Return ``True`` if loopback browser flow cannot work for ``client_id``.
 
-    The loopback browser flow (:func:`login_via_browser`) targets the
+    The loopback browser flow (:func:`login_browser_v2`) targets the
     v2 ``consumers/oauth2/v2.0`` endpoint with PKCE and a local listener.
     This returns ``True`` if either:
 
@@ -224,7 +225,7 @@ def is_browser_unsupported(client_id: str) -> bool:
     * ``client_id`` is a v2 ID whose Azure app has no loopback URL
       registered (e.g. ``edu``, ``office365``).
 
-    For v1 IDs the proper replacement is :func:`login_via_browser_v1`
+    For v1 IDs the proper replacement is :func:`login_browser_v1`
     (OOB paste-back). For browser-unsupported v2 IDs, use device-code.
     """
     return client_id in BROWSER_UNSUPPORTED_CLIENT_IDS
@@ -301,6 +302,7 @@ __all__ = [
     "LIQUIDLAUNCHER_CLIENT_ID",
     "LIVE_CONNECT_AUTHORIZE_URL",
     "LIVE_CONNECT_DESKTOP_REDIRECT_URI",
+    "LIVE_CONNECT_DEVICE_CODE_URL",
     "LIVE_CONNECT_SCOPE_MBI_SSL",
     "LIVE_CONNECT_TOKEN_URL",
     "MC_ENTITLEMENTS_URL",

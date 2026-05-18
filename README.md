@@ -35,10 +35,10 @@ uv sync
 
 ```python
 import asyncio
-from mcapi_auth import login, get_own_profile, get_uuid_by_name
+from mcapi_auth import login_device_code_v1, get_own_profile, get_uuid_by_name
 
 async def main() -> None:
-    session = await login()                       # Microsoft → Minecraft token
+    session = await login_device_code_v1()       # Microsoft → Minecraft token
     # Pass ``storage=FileTokenStorage()`` to persist the refresh token
     # across runs — by default tokens live only in memory.
     print(session.username, session.uuid_dashed)
@@ -55,7 +55,7 @@ asyncio.run(main())
 First run: a URL + 8-character code is printed; visit, paste, sign in.
 To persist the refresh token across runs (so subsequent launches skip
 the interactive step), pass ``storage=FileTokenStorage()`` to
-``login()``. The default ``NullTokenStorage`` keeps state in memory
+``login_device_code_v1()``. The default ``NullTokenStorage`` keeps state in memory
 only.
 
 ## Package layout
@@ -74,14 +74,14 @@ PKCE flow).
 
 ## Browser-driven login (no codes to type)
 
-If your app can open a browser, `login_via_browser()` is friendlier:
+If your app can open a browser, `login_browser_v2()` is friendlier:
 it spins up a localhost listener, opens the MSA authorize URL, catches
 the redirect, and validates CSRF state — all stdlib, no extra deps.
 
 ```python
-from mcapi_auth import login_via_browser
+from mcapi_auth import login_browser_v2
 
-session = await login_via_browser(prompt="select_account")
+session = await login_browser_v2(prompt="select_account")
 ```
 
 See [`examples/browser_login.py`](examples/browser_login.py) for a
@@ -90,7 +90,7 @@ runnable script.
 ## Custom prompt display
 
 ```python
-from mcapi_auth import DeviceCodePrompt, login
+from mcapi_auth import DeviceCodePrompt, login_device_code_v1
 
 async def show(prompt: DeviceCodePrompt) -> None:
     await channel.send(
@@ -98,13 +98,13 @@ async def show(prompt: DeviceCodePrompt) -> None:
         f"Code: `{prompt.user_code}`"
     )
 
-session = await login(on_device_code=show)
+session = await login_device_code_v1(on_device_code=show)
 ```
 
 ## Custom token storage
 
 ```python
-from mcapi_auth import TokenStorage, login
+from mcapi_auth import TokenStorage, login_device_code_v1
 
 class MemoryStorage(TokenStorage):
     def __init__(self) -> None:
@@ -113,7 +113,7 @@ class MemoryStorage(TokenStorage):
     async def save(self, refresh_token: str) -> None: self._token = refresh_token
     async def clear(self) -> None: self._token = None
 
-session = await login(storage=MemoryStorage())
+session = await login_device_code_v1(storage=MemoryStorage())
 ```
 
 The default storage (`FileTokenStorage`) writes JSON to
@@ -148,7 +148,7 @@ print(manifest.latest_release, manifest.latest_snapshot)
 
 Every authed endpoint accepts either a raw access-token string or any
 object exposing an `.access_token` attribute — which is exactly what
-`MinecraftSession` provides, so you can pass the result of `login()`
+`MinecraftSession` provides, so you can pass the result of `login_device_code_v1()`
 directly.
 
 ## Typed errors
@@ -196,7 +196,7 @@ caching transports, etc:
 
 ```python
 async with httpx.AsyncClient(timeout=15.0, proxy="http://...") as client:
-    session = await login(http_client=client)
+    session = await login_device_code_v1(http_client=client)
     profile = await get_own_profile(session, http_client=client)
 ```
 
@@ -281,7 +281,7 @@ Selenium / nodriver / playwright session. See
 > cookies. Only use them on accounts you own or have explicit
 > permission to automate.
 
-## Beyond `login()`
+## Beyond `login_device_code_v1()`
 
 A few additional auth-side helpers:
 
@@ -556,7 +556,7 @@ By default we use the public Minecraft Launcher `client_id`
 (`00000000-402b-4cd3-a82b-c45ab2f1d3f7`) that every open-source launcher
 relies on. Microsoft has tolerated this for ~5 years; if they ever
 revoke it, every Minecraft launcher on Earth breaks the same day. Pass
-a different `client_id=` to `login()` if you have your own MSA app
+a different `client_id=` to `login_device_code_v1()` if you have your own MSA app
 registration.
 
 ## Known client_id catalog
@@ -574,18 +574,18 @@ the v1 and v2 `authorize` endpoints. Use the listed flow:
 
 | alias                  | type | accepted redirect_uri(s)                                 | flow                  |
 |--|--|--|--|
-| `java`                 | v1   | OOB only (`oauth20_desktop.srf`)                         | `login_via_browser_v1`  |
-| `bedrock-android`      | v1   | OOB only                                                 | `login_via_browser_v1`  |
-| `bedrock-ios`          | v1   | OOB only                                                 | `login_via_browser_v1`  |
-| `bedrock-nintendo`     | v1   | OOB only                                                 | `login_via_browser_v1`  |
-| `bedrock-playstation`  | v1   | OOB only                                                 | `login_via_browser_v1`  |
+| `java`                 | v1   | OOB only (`oauth20_desktop.srf`)                         | `login_browser_v1`  |
+| `bedrock-android`      | v1   | OOB only                                                 | `login_browser_v1`  |
+| `bedrock-ios`          | v1   | OOB only                                                 | `login_browser_v1`  |
+| `bedrock-nintendo`     | v1   | OOB only                                                 | `login_browser_v1`  |
+| `bedrock-playstation`  | v1   | OOB only                                                 | `login_browser_v1`  |
 | `bedrock-win32`        | v1   | **broken upstream** (OOB returns `invalid_request`)      | — |
-| `xbox-app-ios`         | v1   | OOB only                                                 | `login_via_browser_v1`  |
-| `xbox-gamepass-ios`    | v1   | OOB only                                                 | `login_via_browser_v1`  |
-| `prism` *(default)*    | v2   | `http://{127.0.0.1,localhost}:*/` (root path)            | `login_via_browser` or `login` (device-code) |
-| `liquidlauncher`/`liquidbounce` | v2 | `http://localhost:*/login`                          | `login_via_browser` or `login` |
-| `edu`                  | v2   | none — no loopback registered                            | `login` (device-code) only |
-| `office365`            | v2   | none — no loopback registered                            | `login` (device-code) only |
+| `xbox-app-ios`         | v1   | OOB only                                                 | `login_browser_v1`  |
+| `xbox-gamepass-ios`    | v1   | OOB only                                                 | `login_browser_v1`  |
+| `prism` *(default)*    | v2   | `http://{127.0.0.1,localhost}:*/` (root path)            | `login_browser_v2` or `login_device_code_v2` |
+| `liquidlauncher`/`liquidbounce` | v2 | `http://localhost:*/login`                          | `login_browser_v2` or `login_device_code_v2` |
+| `edu`                  | v2   | none — no loopback registered                            | `login_device_code_v1` only |
+| `office365`            | v2   | none — no loopback registered                            | `login_device_code_v1` only |
 
 Helpers:
 
@@ -595,7 +595,7 @@ Helpers:
   `(bind_host, redirect_path)` for clients with a known registered
   loopback URI (currently `prism`, `liquidlauncher`); `None` otherwise.
 - `is_browser_unsupported(client_id)` — `True` if
-  `login_via_browser` (v2 loopback) cannot succeed for this client_id:
+  `login_browser_v2` (v2 loopback) cannot succeed for this client_id:
   every v1 ID (rejected by the v2 endpoint as `AADSTS70001`) plus
   every v2 ID without a loopback URL registered (`edu`, `office365`).
 

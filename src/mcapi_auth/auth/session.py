@@ -15,7 +15,7 @@ def _now() -> Instant:
 class MinecraftSession(McModel):
     """A successful Minecraft authentication.
 
-    All fields are required. Construct via :func:`mcapi_auth.login` rather than
+    All fields are required. Construct via :func:`mcapi_auth.login_device_code_v1` rather than
     instantiating directly.
 
     Attributes:

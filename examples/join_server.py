@@ -15,11 +15,11 @@ Typical flow:
 
 import asyncio
 
-from mcapi_auth import join_server, login
+from mcapi_auth import join_server, login_device_code_v1
 
 
 async def main() -> None:
-    session = await login()
+    session = await login_device_code_v1()
 
     # In real usage these come from your protocol handshake; here we just
     # demo the API shape with a placeholder.

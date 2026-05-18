@@ -15,7 +15,7 @@ from mcapi_auth.auth import (
     FileTokenStorage,
     MinecraftProfileNotFoundError,
     TokenStorage,
-    login,
+    login_device_code_v2,
 )
 from mcapi_auth.auth.msa import DeviceCodePrompt
 
@@ -66,7 +66,7 @@ async def test_login_with_cached_refresh_token_skips_device_code() -> None:
         nonlocal callback_called
         callback_called = True
 
-    session = await login(storage=storage, on_device_code=cb)
+    session = await login_device_code_v2(storage=storage, on_device_code=cb)
     assert session.username == "Notch"
     assert session.access_token == "mc-tok"
     assert session.refresh_token == "rotated-refresh"
@@ -122,7 +122,7 @@ async def test_login_falls_back_to_device_code_on_refresh_failure(
     async def cb(prompt: DeviceCodePrompt) -> None:
         prompts.append(prompt)
 
-    session = await login(storage=storage, on_device_code=cb)
+    session = await login_device_code_v2(storage=storage, on_device_code=cb)
     assert session.username == "Notch"
     assert session.refresh_token == "device-refresh"
     assert len(prompts) == 1
@@ -150,7 +150,7 @@ async def test_login_propagates_profile_not_found(monkeypatch: pytest.MonkeyPatc
 
     storage = MemoryStorage(initial="rt-old")
     with pytest.raises(MinecraftProfileNotFoundError):
-        _ = await login(storage=storage)
+        _ = await login_device_code_v2(storage=storage)
 
 
 def test_default_storage_is_file_backed(tmp_path: object) -> None:
@@ -163,7 +163,7 @@ def test_default_storage_is_file_backed(tmp_path: object) -> None:
 
 
 @respx.mock
-async def test_login_via_browser_end_to_end() -> None:
+async def test_login_browser_v2_end_to_end() -> None:
     """Browser flow: redirect listener hits, MSA token exchange, XBL+XSTS+MC profile."""
     import asyncio
     import re
@@ -171,7 +171,7 @@ async def test_login_via_browser_end_to_end() -> None:
 
     import httpx as _httpx
 
-    from mcapi_auth.auth import login_via_browser
+    from mcapi_auth.auth import login_browser_v2
 
     # Let the localhost callback through respx; everything else is mocked.
     respx.route(url__regex=re.compile(r"^http://127\.0\.0\.1:\d+/")).pass_through()
@@ -193,7 +193,7 @@ async def test_login_via_browser_end_to_end() -> None:
         _ = asyncio.ensure_future(_hit())  # noqa: RUF006
 
     storage = MemoryStorage()
-    session = await login_via_browser(
+    session = await login_browser_v2(
         storage=storage,
         bind_host="127.0.0.1",
         bind_port=0,

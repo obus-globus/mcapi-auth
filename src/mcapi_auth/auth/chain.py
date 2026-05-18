@@ -31,11 +31,16 @@ import inspect
 import json
 import logging
 from collections.abc import Awaitable, Callable
-from typing import Any, Self
+from typing import Any, Literal, Self
 
 import httpx
 from whenever import Instant
 
+from .._constants import (
+    LIVE_CONNECT_DEVICE_CODE_URL,
+    LIVE_CONNECT_SCOPE_MBI_SSL,
+    LIVE_CONNECT_TOKEN_URL,
+)
 from .._models import InstantField, McModel
 from .app_config import MsaApplicationConfig
 from .flow import _invoke_callback  # pyright: ignore[reportPrivateUsage]
@@ -51,9 +56,21 @@ from .msa import (
 from .session import MinecraftSession
 from .xbox import XboxLiveToken, XSTSToken, authenticate_xbl, authenticate_xsts
 
-__all__ = ["AuthChain", "ChainChangeListener"]
+__all__ = ["AuthChain", "AuthChainFlow", "ChainChangeListener"]
 
 logger = logging.getLogger(__name__)
+
+type AuthChainFlow = Literal["device_code_v1", "device_code_v2"]
+"""Which device-code flow :meth:`AuthChain.login` should drive.
+
+``"device_code_v1"`` (the default) hits the legacy Live-Connect
+endpoints with the official Minecraft Launcher's v1 client_id —
+matches what the official launcher does. ``"device_code_v2"`` hits the
+modern Azure-AD ``consumers`` endpoint with whatever v2 client_id is in
+the supplied :class:`MsaApplicationConfig`. For browser-based flows,
+call :func:`login_browser_v1` / :func:`login_browser_v2` and bridge in
+via :meth:`AuthChain.from_session`.
+"""
 
 type ChainChangeListener = Callable[[str, Any, Any], None | Awaitable[None]]
 """Signature for chain-wide listeners.
@@ -155,30 +172,72 @@ class AuthChain:
         cls,
         *,
         app: MsaApplicationConfig | None = None,
+        flow: AuthChainFlow = "device_code_v1",
         on_device_code: Callable[[DeviceCodePrompt], None | Awaitable[None]] | None = None,
         http_client: httpx.AsyncClient | None = None,
     ) -> Self:
-        """Run the device-code flow end-to-end and return a fresh chain.
+        """Run a device-code flow end-to-end and return a fresh chain.
 
-        For the browser flow, use :func:`mcapi_auth.login_via_browser`
-        to obtain a :class:`MinecraftSession`, then call
-        :meth:`from_session`.
+        ``flow`` picks between the two device-code variants:
+
+        * ``"device_code_v1"`` *(default)* — Live-Connect endpoints with
+          the official Minecraft Launcher's v1 client_id by default
+          (matches what the official launcher does, more permissive XBL
+          tokens). Ignores ``app``'s URL fields and uses
+          :data:`LIVE_CONNECT_DEVICE_CODE_URL` /
+          :data:`LIVE_CONNECT_TOKEN_URL` /
+          :data:`LIVE_CONNECT_SCOPE_MBI_SSL`, but still respects
+          ``app.client_id`` when ``app`` is a v1 config — pass a custom
+          v1 :class:`MsaApplicationConfig` if you want a non-default
+          client_id.
+        * ``"device_code_v2"`` — modern Azure-AD ``consumers`` endpoint.
+          Honours every URL / scope / client_id field on ``app``.
+
+        For the browser flows, call :func:`mcapi_auth.login_browser_v1`
+        or :func:`mcapi_auth.login_browser_v2` and bridge the returned
+        :class:`MinecraftSession` via :meth:`from_session`.
         """
-        actual_app = app if app is not None else MsaApplicationConfig.v2()
-        if actual_app.is_v1:
-            raise ValueError(
-                "AuthChain.login() doesn't support v1 client_ids "
-                "(device-code endpoint is v2 only). Use a v2 MsaApplicationConfig."
-            )
+        if flow == "device_code_v1":
+            actual_app = app if app is not None else MsaApplicationConfig.v1_launcher()
+            if not actual_app.is_v1:
+                raise ValueError(
+                    "flow='device_code_v1' requires a v1 MsaApplicationConfig "
+                    "(use MsaApplicationConfig.v1_launcher() or .from_known() "
+                    "with a v1 alias)."
+                )
+            device_code_url = LIVE_CONNECT_DEVICE_CODE_URL
+            token_url = LIVE_CONNECT_TOKEN_URL
+            scope = LIVE_CONNECT_SCOPE_MBI_SSL
+            is_v1 = True
+        else:
+            actual_app = app if app is not None else MsaApplicationConfig.v2()
+            if actual_app.is_v1:
+                raise ValueError(
+                    "flow='device_code_v2' requires a v2 MsaApplicationConfig "
+                    "(use MsaApplicationConfig.v2() or .from_known() with a v2 alias)."
+                )
+            device_code_url = actual_app.device_code_url
+            token_url = actual_app.token_url
+            scope = actual_app.scope
+            is_v1 = False
+
         prompt, pending = await request_device_code(
-            client_id=actual_app.client_id, http_client=http_client
+            client_id=actual_app.client_id,
+            scope=scope,
+            device_code_url=device_code_url,
+            is_v1=is_v1,
+            http_client=http_client,
         )
         if on_device_code is not None:
             await _invoke_callback(on_device_code, prompt)
         else:
             print(prompt.message or f"Visit {prompt.verification_uri} and enter {prompt.user_code}")
         msa = await poll_for_device_code_token(
-            pending, client_id=actual_app.client_id, http_client=http_client
+            pending,
+            client_id=actual_app.client_id,
+            token_url=token_url,
+            is_v1=is_v1,
+            http_client=http_client,
         )
         chain = cls(app=actual_app, msa=msa, http_client=http_client)
         # Drive the downstream stages once so callers can immediately

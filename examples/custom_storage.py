@@ -1,4 +1,4 @@
-"""Plug a custom `TokenStorage` into `mcapi_auth.login()`.
+"""Plug a custom `TokenStorage` into `mcapi_auth.login_device_code_v1()`.
 `FileTokenStorage` (XDG state dir, atomic write, 0600 perms) is fine for
 single-user desktop apps. For services, you'll want to put refresh
 tokens somewhere else — your DB, a secrets manager, an in-memory cache
@@ -13,7 +13,7 @@ import asyncio
 import sqlite3
 from pathlib import Path
 
-from mcapi_auth import DeviceCodePrompt, TokenStorage, login
+from mcapi_auth import DeviceCodePrompt, TokenStorage, login_device_code_v1
 
 
 class MemoryTokenStorage:
@@ -82,7 +82,7 @@ async def show_prompt(prompt: DeviceCodePrompt) -> None:
 
 async def main() -> None:
     storage: TokenStorage = SQLiteTokenStorage(Path("./mcauth-tokens.db"))
-    session = await login(storage=storage, on_device_code=show_prompt)
+    session = await login_device_code_v1(storage=storage, on_device_code=show_prompt)
     print(f"Logged in as {session.username}; token persisted to mcauth-tokens.db")
 
 

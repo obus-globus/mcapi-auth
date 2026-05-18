@@ -1,5 +1,5 @@
 """Authorization-code (browser) login example.
-Demonstrates :func:`mcapi_auth.login_via_browser`. Run with::
+Demonstrates :func:`mcapi_auth.login_browser_v2`. Run with::
 
     uv run python examples/browser_login.py
 
@@ -19,7 +19,7 @@ What happens:
    the script skips the browser flow entirely until that token is
    eventually rotated out.
 
-Pass ``prompt="select_account"`` to ``login_via_browser`` if you want
+Pass ``prompt="select_account"`` to ``login_browser_v2`` if you want
 to force the account picker (useful when more than one MS account is
 signed in to the browser).
 """
@@ -27,14 +27,14 @@ signed in to the browser).
 import asyncio
 import logging
 
-from mcapi_auth import login_via_browser
+from mcapi_auth import login_browser_v2
 
 
 async def main() -> None:
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
     )
-    session = await login_via_browser(prompt="select_account")
+    session = await login_browser_v2(prompt="select_account")
     print(f"Signed in as {session.username} ({session.uuid_dashed})")
     print(f"Access token (truncated): {session.access_token[:24]}...")
     print(f"MC token expires in: {session.minecraft_token_seconds_remaining():.0f}s")

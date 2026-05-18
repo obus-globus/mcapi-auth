@@ -36,7 +36,7 @@ class DeviceCodePrompt(McModel):
     """Information shown to the user during the device-code flow.
 
     Pass a callback of ``(prompt: DeviceCodePrompt) -> None`` to
-    :func:`mcapi_auth.login` to control how the user is informed of the URL +
+    :func:`mcapi_auth.login_device_code_v1` to control how the user is informed of the URL +
     code they must visit.
     """
 
@@ -66,18 +66,28 @@ class _PendingDeviceCode(McModel):
 async def request_device_code(
     *,
     client_id: str = PRISM_LAUNCHER_CLIENT_ID,
+    scope: str = MSA_SCOPE,
+    device_code_url: str = MSA_DEVICE_CODE_URL,
+    is_v1: bool = False,
     http_client: httpx.AsyncClient | None = None,
 ) -> tuple[DeviceCodePrompt, _PendingDeviceCode]:
     """Kick off the device-code flow.
 
     Returns the prompt to display to the user *and* an opaque
     ``_PendingDeviceCode`` to be passed to :func:`poll_for_device_code_token`.
+
+    Defaults target the v2 Azure-AD ``consumers`` endpoint. For the
+    legacy Live-Connect (v1) device-code flow, pass
+    ``device_code_url=LIVE_CONNECT_DEVICE_CODE_URL``,
+    ``scope=LIVE_CONNECT_SCOPE_MBI_SSL``, ``is_v1=True`` and a v1
+    client_id; the v1 endpoint requires an explicit
+    ``response_type=device_code`` parameter.
     """
+    body: dict[str, str] = {"client_id": client_id, "scope": scope}
+    if is_v1:
+        body["response_type"] = "device_code"
     async with acquire_client(http_client) as c:
-        response = await c.post(
-            MSA_DEVICE_CODE_URL,
-            data={"client_id": client_id, "scope": MSA_SCOPE},
-        )
+        response = await c.post(device_code_url, data=body)
     if response.status_code != 200:
         raise MSAFlowError(f"device-code request failed: status={response.status_code}")
     data = parse_json_object_auth(response)
@@ -105,6 +115,8 @@ async def poll_for_device_code_token(
     pending: _PendingDeviceCode,
     *,
     client_id: str = PRISM_LAUNCHER_CLIENT_ID,
+    token_url: str = MSA_TOKEN_URL,
+    is_v1: bool = False,
     http_client: httpx.AsyncClient | None = None,
 ) -> MSATokens:
     """Poll Microsoft's token endpoint until the user authorizes or it expires.
@@ -113,8 +125,14 @@ async def poll_for_device_code_token(
     :data:`MIN_DEVICE_CODE_POLL_INTERVAL`. The server may bump us with
     ``slow_down`` errors, in which case we add 5 seconds permanently
     (per the OAuth spec).
+
+    Defaults target the v2 token endpoint. For the legacy Live-Connect
+    (v1) device-code flow, pass ``token_url=LIVE_CONNECT_TOKEN_URL`` and
+    ``is_v1=True``; the v1 endpoint expects the short
+    ``grant_type=device_code`` form rather than the OAuth-spec URN.
     """
     interval = max(float(pending.interval), MIN_DEVICE_CODE_POLL_INTERVAL)
+    grant_type = "device_code" if is_v1 else "urn:ietf:params:oauth:grant-type:device_code"
 
     async with acquire_client(http_client) as c:
         while True:
@@ -122,11 +140,11 @@ async def poll_for_device_code_token(
             if Instant.now() >= pending.expires_at:
                 raise DeviceCodeExpiredError("device-code flow expired before user completed it")
             response = await c.post(
-                MSA_TOKEN_URL,
+                token_url,
                 data={
                     "client_id": client_id,
                     "device_code": pending.device_code,
-                    "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
+                    "grant_type": grant_type,
                 },
             )
             if response.status_code == 200:

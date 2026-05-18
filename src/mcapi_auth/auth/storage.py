@@ -2,7 +2,7 @@
 By default, the MSA refresh token is stored as JSON in an XDG state file
 with ``0600`` permissions. Callers that need anything else (keyring,
 encrypted blob, in-memory only) implement the :class:`TokenStorage`
-:class:`Protocol` and pass an instance to :func:`mcapi_auth.login`.
+:class:`Protocol` and pass an instance to :func:`mcapi_auth.login_device_code_v1`.
 
 Only the refresh token is persisted — short-lived access tokens are
 re-derived on every call.
@@ -46,7 +46,7 @@ class TokenStorage(Protocol):
 class NullTokenStorage:
     """In-memory no-op storage. Forgets the refresh token at shutdown.
 
-    Default for :func:`mcapi_auth.login` since v0.5.0 — callers that
+    Default for :func:`mcapi_auth.login_device_code_v1` since v0.5.0 — callers that
     want persistence must pass an explicit
     :class:`FileTokenStorage` (or any other ``TokenStorage`` impl).
     """

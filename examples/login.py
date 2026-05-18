@@ -2,7 +2,7 @@
 
 import asyncio
 
-from mcapi_auth import DeviceCodePrompt, login
+from mcapi_auth import DeviceCodePrompt, login_device_code_v1
 
 
 async def show_prompt(prompt: DeviceCodePrompt) -> None:
@@ -16,7 +16,7 @@ async def show_prompt(prompt: DeviceCodePrompt) -> None:
 
 
 async def main() -> None:
-    session = await login(on_device_code=show_prompt)
+    session = await login_device_code_v1(on_device_code=show_prompt)
     print(f"Logged in as {session.username} ({session.uuid_dashed})")
     print(f"Minecraft access token expires in {session.minecraft_token_seconds_remaining():.0f}s")
 

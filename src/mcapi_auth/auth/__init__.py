@@ -1,7 +1,8 @@
 """Authentication chain: Microsoft → XBL → XSTS → Mojang.
+
 The :mod:`mcapi_auth.auth` subpackage owns everything related to
 *getting* a Minecraft access token from a Microsoft account. The public
-entry points (:func:`login`, :func:`login_via_browser`,
+entry points (:func:`login_device_code_v1`, :func:`login_browser_v2`,
 :class:`MinecraftSession`, …) are also re-exported from the top-level
 :mod:`mcapi_auth` namespace for convenience.
 """
@@ -68,7 +69,13 @@ from .cookies import (
     login_with_cookies_sisu,
 )
 from .entitlements import Entitlements, derive_entitlement_flags, fetch_entitlements
-from .flow import DeviceCodeCallback, login, login_via_browser, login_via_browser_v1
+from .flow import (
+    DeviceCodeCallback,
+    login_browser_v1,
+    login_browser_v2,
+    login_device_code_v1,
+    login_device_code_v2,
+)
 from .holder import ChangeListener, Holder
 from .minecraft import MinecraftProfile, MinecraftToken, login_with_xbox
 from .msa import (
@@ -157,9 +164,10 @@ __all__ = [
     "is_browser_unsupported",
     "is_v1_client_id",
     "join_server",
-    "login",
-    "login_via_browser",
-    "login_via_browser_v1",
+    "login_browser_v1",
+    "login_browser_v2",
+    "login_device_code_v1",
+    "login_device_code_v2",
     "login_with_cookies_msa_v1",
     "login_with_cookies_msa_v2_loopback",
     "login_with_cookies_sisu",

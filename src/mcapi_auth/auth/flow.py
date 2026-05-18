@@ -1,4 +1,18 @@
-"""High-level orchestration of stages 1-5."""
+"""High-level orchestration of stages 1-5.
+
+Four entry points cover the public auth flows; each name encodes both
+the **mechanism** (device-code vs. browser/auth-code) and the **API
+version** (v1 / Live-Connect vs. v2 / Azure-AD ``consumers``):
+
+* :func:`login_device_code_v1` — device-code on the legacy Live-Connect
+  endpoints with the official Minecraft Launcher v1 client_id.
+* :func:`login_device_code_v2` — device-code on Azure-AD ``consumers``
+  with PrismLauncher's v2 client_id by default.
+* :func:`login_browser_v1` — browser / auth-code (OOB paste-back) on
+  the legacy Live-Connect endpoints with the v1 launcher client_id.
+* :func:`login_browser_v2` — browser / auth-code (loopback) on Azure-AD
+  ``consumers`` with PrismLauncher's client_id by default.
+"""
 
 import inspect
 import logging
@@ -8,10 +22,13 @@ import httpx
 
 from .._constants import (
     LIVE_CONNECT_DESKTOP_REDIRECT_URI,
+    LIVE_CONNECT_DEVICE_CODE_URL,
     LIVE_CONNECT_SCOPE_MBI_SSL,
     LIVE_CONNECT_TOKEN_URL,
     MINECRAFT_LAUNCHER_V1_CLIENT_ID,
+    MSA_DEVICE_CODE_URL,
     MSA_SCOPE,
+    MSA_TOKEN_URL,
     PRISM_LAUNCHER_CLIENT_ID,
 )
 from ..exceptions import MSAFlowError
@@ -28,7 +45,13 @@ from .session import MinecraftSession
 from .storage import NullTokenStorage, TokenStorage
 from .xbox import authenticate_xbl, authenticate_xsts
 
-__all__ = ["DeviceCodeCallback", "login", "login_via_browser", "login_via_browser_v1"]
+__all__ = [
+    "DeviceCodeCallback",
+    "login_browser_v1",
+    "login_browser_v2",
+    "login_device_code_v1",
+    "login_device_code_v2",
+]
 
 logger = logging.getLogger(__name__)
 
@@ -58,14 +81,22 @@ async def _invoke_callback(cb: DeviceCodeCallback, prompt: DeviceCodePrompt) -> 
         await result
 
 
-async def login(
+async def login_device_code_v2(
     *,
     storage: TokenStorage | None = None,
     on_device_code: DeviceCodeCallback | None = None,
     client_id: str = PRISM_LAUNCHER_CLIENT_ID,
     http_client: httpx.AsyncClient | None = None,
 ) -> MinecraftSession:
-    """Run the full MSA → XBL → XSTS → Mojang flow end-to-end.
+    """Run the full MSA → XBL → XSTS → Mojang flow via **v2 device-code**.
+
+    Targets the modern Azure-AD ``consumers`` endpoint with
+    :data:`PRISM_LAUNCHER_CLIENT_ID` by default and the v2
+    ``XboxLive.signin offline_access`` scope. Pass any v2 (UUID)
+    client_id you control via ``client_id``.
+
+    For the legacy Live-Connect device-code flow with the official
+    Minecraft Launcher v1 client_id, use :func:`login_device_code_v1`.
 
     Order of operations:
 
@@ -85,8 +116,8 @@ async def login(
         on_device_code: Awaitable called with the
             :class:`~mcapi_auth.auth.msa.DeviceCodePrompt` when the user needs to
             visit a URL. Only invoked when refresh-token reuse fails.
-        client_id: MSA OAuth client_id. Defaults to the well-known
-            public Minecraft Launcher client_id.
+        client_id: MSA OAuth client_id. Defaults to PrismLauncher's v2
+            client_id; pass any v2 client_id you control here.
         http_client: Pre-configured :class:`httpx.AsyncClient` to reuse.
             One is created (and torn down) per call if omitted.
 
@@ -94,6 +125,65 @@ async def login(
         A :class:`MinecraftSession` carrying the Minecraft access token,
         UUID, username, and rotated refresh token.
     """
+    return await _device_code_login(
+        storage=storage,
+        on_device_code=on_device_code,
+        client_id=client_id,
+        scope=MSA_SCOPE,
+        device_code_url=MSA_DEVICE_CODE_URL,
+        token_url=MSA_TOKEN_URL,
+        is_v1=False,
+        xbl_use_d_prefix=True,
+        http_client=http_client,
+    )
+
+
+async def login_device_code_v1(
+    *,
+    storage: TokenStorage | None = None,
+    on_device_code: DeviceCodeCallback | None = None,
+    client_id: str = MINECRAFT_LAUNCHER_V1_CLIENT_ID,
+    http_client: httpx.AsyncClient | None = None,
+) -> MinecraftSession:
+    """Run the full auth chain via the **v1 / Live-Connect device-code** flow.
+
+    Mirror of :func:`login_device_code_v2` but hits
+    ``login.live.com/oauth20_connect.srf`` for the device-code request,
+    ``login.live.com/oauth20_token.srf`` for the poll, defaults to
+    :data:`MINECRAFT_LAUNCHER_V1_CLIENT_ID` (the official launcher's
+    compressed-form id), and uses the ``MBI_SSL`` scope. The XBL
+    ``RpsTicket`` is sent **without** the ``d=`` prefix (as Live-Connect
+    tokens expect).
+
+    Useful when the modern v2 endpoints reject your account / tenant or
+    you specifically want parity with the historical launcher behaviour
+    (more permissive XBL tokens, fewer FIDO / consent prompts).
+    """
+    return await _device_code_login(
+        storage=storage,
+        on_device_code=on_device_code,
+        client_id=client_id,
+        scope=LIVE_CONNECT_SCOPE_MBI_SSL,
+        device_code_url=LIVE_CONNECT_DEVICE_CODE_URL,
+        token_url=LIVE_CONNECT_TOKEN_URL,
+        is_v1=True,
+        xbl_use_d_prefix=False,
+        http_client=http_client,
+    )
+
+
+async def _device_code_login(
+    *,
+    storage: TokenStorage | None,
+    on_device_code: DeviceCodeCallback | None,
+    client_id: str,
+    scope: str,
+    device_code_url: str,
+    token_url: str,
+    is_v1: bool,
+    xbl_use_d_prefix: bool,
+    http_client: httpx.AsyncClient | None,
+) -> MinecraftSession:
     actual_storage: TokenStorage = storage if storage is not None else NullTokenStorage()
     prompt_cb: DeviceCodeCallback = (
         on_device_code if on_device_code is not None else _default_prompt
@@ -103,10 +193,16 @@ async def login(
         storage=actual_storage,
         prompt_cb=prompt_cb,
         client_id=client_id,
+        scope=scope,
+        device_code_url=device_code_url,
+        token_url=token_url,
+        is_v1=is_v1,
         http_client=http_client,
     )
 
-    xbl = await authenticate_xbl(msa_tokens.access_token, http_client=http_client)
+    xbl = await authenticate_xbl(
+        msa_tokens.access_token, use_d_prefix=xbl_use_d_prefix, http_client=http_client
+    )
     xsts = await authenticate_xsts(xbl.token, http_client=http_client)
     mc_token = await login_with_xbox(xsts.userhash, xsts.token, http_client=http_client)
     profile = await fetch_profile(mc_token.access_token, http_client=http_client)
@@ -129,13 +225,21 @@ async def _acquire_msa_tokens(
     storage: TokenStorage,
     prompt_cb: DeviceCodeCallback,
     client_id: str,
+    scope: str,
+    device_code_url: str,
+    token_url: str,
+    is_v1: bool,
     http_client: httpx.AsyncClient | None,
 ) -> MSATokens:
     refresh_token = await storage.load()
     if refresh_token is not None:
         try:
             return await exchange_refresh_token(
-                refresh_token, client_id=client_id, http_client=http_client
+                refresh_token,
+                client_id=client_id,
+                token_url=token_url,
+                scope=scope,
+                http_client=http_client,
             )
         except MSAFlowError as e:
             logger.info(
@@ -144,12 +248,24 @@ async def _acquire_msa_tokens(
             )
             await storage.clear()
 
-    prompt, pending = await request_device_code(client_id=client_id, http_client=http_client)
+    prompt, pending = await request_device_code(
+        client_id=client_id,
+        scope=scope,
+        device_code_url=device_code_url,
+        is_v1=is_v1,
+        http_client=http_client,
+    )
     await _invoke_callback(prompt_cb, prompt)
-    return await poll_for_device_code_token(pending, client_id=client_id, http_client=http_client)
+    return await poll_for_device_code_token(
+        pending,
+        client_id=client_id,
+        token_url=token_url,
+        is_v1=is_v1,
+        http_client=http_client,
+    )
 
 
-async def login_via_browser(
+async def login_browser_v2(
     *,
     storage: TokenStorage | None = None,
     client_id: str = PRISM_LAUNCHER_CLIENT_ID,
@@ -161,18 +277,18 @@ async def login_via_browser(
     open_browser: Callable[[str], None | Awaitable[None]] | None = None,
     http_client: httpx.AsyncClient | None = None,
 ) -> MinecraftSession:
-    """Run the full auth chain via the authorization-code (browser) flow.
+    """Run the full auth chain via the **v2** authorization-code (browser) flow.
 
-    Mirror of :func:`login` but uses
+    Mirror of :func:`login_device_code_v2` but uses
     :func:`mcapi_auth.auth.auth_code.acquire_msa_via_browser` for the MSA step
     instead of device-code: a localhost HTTP listener is started, the
     user's browser is opened to the MSA authorize URL, and we wait for
     the redirect callback (validating CSRF ``state``).
 
-    The refresh-token reuse path is identical to :func:`login` — if
-    ``storage`` already has a valid refresh token, we skip the browser
-    dance entirely. The browser is only opened when refresh fails or no
-    token is stored.
+    The refresh-token reuse path is identical to
+    :func:`login_device_code_v2` — if ``storage`` already has a valid
+    refresh token, we skip the browser dance entirely. The browser is
+    only opened when refresh fails or no token is stored.
 
     Args:
         storage: Refresh-token persistence backend. Defaults to
@@ -242,7 +358,7 @@ async def login_via_browser(
     )
 
 
-async def login_via_browser_v1(
+async def login_browser_v1(
     *,
     storage: TokenStorage | None = None,
     client_id: str = MINECRAFT_LAUNCHER_V1_CLIENT_ID,
@@ -252,9 +368,9 @@ async def login_via_browser_v1(
     prompt_for_code: Callable[[str], str | Awaitable[str]] | None = None,
     http_client: httpx.AsyncClient | None = None,
 ) -> MinecraftSession:
-    """Run the full auth chain via the **legacy Live-Connect v1** flow.
+    """Run the full auth chain via the **legacy Live-Connect v1 browser** flow.
 
-    Mirror of :func:`login_via_browser` but talks to
+    Mirror of :func:`login_browser_v2` but talks to
     ``login.live.com/oauth20_*.srf`` with the compressed Minecraft
     Launcher client_id (``00000000402b5328`` by default) and the
     ``MBI_SSL`` scope. Useful when the modern v2 endpoints reject

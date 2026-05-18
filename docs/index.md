@@ -5,10 +5,10 @@ chain and the Mojang REST APIs.
 
 ```python
 import asyncio
-from mcapi_auth import login
+from mcapi_auth import login_device_code_v1
 
 async def main():
-    session = await login()
+    session = await login_device_code_v1()
     print(f"Hello, {session.username} ({session.uuid_dashed})")
 
 asyncio.run(main())
