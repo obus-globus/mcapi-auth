@@ -160,7 +160,7 @@ class BedrockAuthManager:
     """
 
     def __init__(
-        self,
+        self,  # NOSONAR every cached stage of the Bedrock chain is a keyword-only param so callers can resume from any point of a previously-dumped snapshot.
         *,
         app: MsaApplicationConfig | None = None,
         msa: MSATokens,
@@ -762,15 +762,16 @@ class BedrockAuthManager:
     # Invalidation cascade
     # ------------------------------------------------------------------
 
-    async def _on_msa_rotated(self, _old: MSATokens | None, _new: MSATokens) -> None:
+    def _on_msa_rotated(self, _old: MSATokens | None, _new: MSATokens) -> None:
         # MSA rotation invalidates everything that consumes the access
         # token. The device token doesn't (it's keypair-bound), so it
         # stays.
         self._invalidate_below_device()
 
-    async def _on_device_rotated(self, _old: XblDeviceToken | None, _new: XblDeviceToken) -> None:
+    def _on_device_rotated(self, _old: XblDeviceToken | None, _new: XblDeviceToken) -> None:
         # Device token rotation invalidates the Sisu legs (which embed
         # the DeviceToken in their request) and everything below.
+        # Same invalidation set as MSA rotation — both feed into Sisu.
         self._invalidate_below_device()
 
     def _invalidate_below_device(self) -> None:
@@ -781,29 +782,23 @@ class BedrockAuthManager:
         self._franchise_session = None
         self._multiplayer_token = None
 
-    async def _on_bedrock_sisu_rotated(
-        self, _old: XblSisuTokens | None, _new: XblSisuTokens
-    ) -> None:
+    def _on_bedrock_sisu_rotated(self, _old: XblSisuTokens | None, _new: XblSisuTokens) -> None:
         self._cert_chain = None
 
-    async def _on_playfab_sisu_rotated(
-        self, _old: XblSisuTokens | None, _new: XblSisuTokens
-    ) -> None:
+    def _on_playfab_sisu_rotated(self, _old: XblSisuTokens | None, _new: XblSisuTokens) -> None:
         self._playfab_token = None
         self._franchise_session = None
         self._multiplayer_token = None
 
-    async def _on_playfab_rotated(self, _old: PlayFabToken | None, _new: PlayFabToken) -> None:
+    def _on_playfab_rotated(self, _old: PlayFabToken | None, _new: PlayFabToken) -> None:
         self._franchise_session = None
         self._multiplayer_token = None
 
-    async def _on_franchise_rotated(
-        self, _old: MinecraftSession | None, _new: MinecraftSession
-    ) -> None:
+    def _on_franchise_rotated(self, _old: MinecraftSession | None, _new: MinecraftSession) -> None:
         self._multiplayer_token = None
 
     async def _dispatch(self, stage: str, old: Any, new: Any) -> None:
-        for cb in list(self._chain_listeners):
+        for cb in tuple(self._chain_listeners):
             try:
                 result = cb(stage, old, new)
                 if inspect.isawaitable(result):

@@ -169,7 +169,7 @@ class Holder[T]:
         return True
 
     async def _fire_listeners(self, old: T | None, new: T) -> None:
-        for cb in list(self._listeners):
+        for cb in tuple(self._listeners):
             try:
                 result = cb(old, new)
                 if inspect.isawaitable(result):

@@ -34,6 +34,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Tests
 
+- **SonarQube cleanup (23 issues → 0).** Mechanical fixes across the
+  source tree to clear all open Sonar findings:
+  - S5713 (redundant `except` subclasses): removed
+    `UnicodeDecodeError`, `binascii.Error`, `UnicodeEncodeError`, and
+    `json.JSONDecodeError` from `except` tuples in `cookies.py`,
+    `textures.py`, `token.py` (all subclass `ValueError`).
+  - S7503 (`async` without `await`): converted `_on_*_rotated`
+    listeners in `bedrock_chain.py` / `chain.py` to sync (Holder
+    accepts both sync and async callbacks); kept `NullTokenStorage`
+    methods `async` with `# NOSONAR` (protocol contract).
+  - S7504 (unnecessary `list()` in iteration): replaced with `tuple()`
+    in listener-snapshot loops in `holder.py`, `bedrock_chain.py`,
+    `chain.py`.
+  - S3776 (cognitive complexity): refactored `_parse_sisu_array`
+    (18 → ~6) and `_extract_profile` (21 → ~5) by extracting helper
+    functions (`_parse_sisu_entry`, `_extract_from_pfd`,
+    `_extract_from_profiles`).
+  - S3358 (nested ternaries in `flow.py`): expanded to explicit
+    `if/elif/else` blocks for `actual_host` / `actual_path` resolution.
+  - S107 (too many params on `BedrockAuthManager.__init__`): kept the
+    15-param signature with `# NOSONAR` (every cached chain stage is a
+    keyword-only param for snapshot reconstruction).
+  - S5857 (reluctant quantifiers): kept regex patterns matching MSA
+    `ServerData` JSON with `# NOSONAR` (greedy alternatives would
+    over-match across multiple `};` boundaries).
+
 - **`BedrockKeyPair.from_pem()` non-EC rejection** — four new unit
   tests cover RSA, Ed25519, P-256 EC, and garbage-input rejection.
   The class previously only had a constructor-level curve check; the

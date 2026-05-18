@@ -12,7 +12,6 @@ single-runtime-dep package.
 """
 
 import base64
-import binascii
 import json
 from typing import Any, cast
 
@@ -61,11 +60,7 @@ def decode_minecraft_access_token(token: str) -> MinecraftTokenInfo:
     try:
         padded = payload_segment + "=" * (-len(payload_segment) % 4)
         decoded_bytes = base64.urlsafe_b64decode(padded.encode("ascii"))
-    except (
-        ValueError,
-        binascii.Error,
-        UnicodeEncodeError,
-    ) as e:  # NOSONAR intentional: documents distinct error sources
+    except ValueError as e:  # binascii.Error + UnicodeEncodeError both subclass ValueError
         raise MinecraftTokenDecodeError(f"payload is not valid base64url: {e}") from e
     try:
         parsed: object = json.loads(decoded_bytes)
@@ -86,9 +81,38 @@ def decode_minecraft_access_token(token: str) -> MinecraftTokenInfo:
     )
 
 
-def _extract_profile(
-    claims: dict[str, Any],
-) -> tuple[str | None, str | None]:  # NOSONAR linear JWT-claims fallback chain
+def _extract_from_pfd(pfd: object) -> tuple[str | None, str | None] | None:
+    """Extract ``(name, uuid)`` from the newer ``pfd`` claim, or ``None``."""
+    if not isinstance(pfd, list):
+        return None
+    pfd_list = cast(list[object], pfd)
+    for entry in pfd_list:
+        if not isinstance(entry, dict):
+            continue
+        entry_typed = cast(dict[str, Any], entry)
+        if entry_typed.get("type") != "mc":
+            continue
+        name = entry_typed.get("name")
+        uid = entry_typed.get("id")
+        return (
+            name if isinstance(name, str) and name else None,
+            uid.replace("-", "") if isinstance(uid, str) and uid else None,
+        )
+    return None
+
+
+def _extract_from_profiles(profiles: object) -> tuple[str | None, str | None] | None:
+    """Extract ``(None, uuid)`` from the older ``profiles.mc`` claim, or ``None``."""
+    if not isinstance(profiles, dict):
+        return None
+    profiles_typed = cast(dict[str, Any], profiles)
+    mc_uid = profiles_typed.get("mc")
+    if isinstance(mc_uid, str) and mc_uid:
+        return None, mc_uid.replace("-", "")
+    return None
+
+
+def _extract_profile(claims: dict[str, Any]) -> tuple[str | None, str | None]:
     """Find ``(username, uuid)`` in the MC JWT, or ``(None, None)`` if absent.
 
     Mojang carries the profile two ways:
@@ -97,25 +121,10 @@ def _extract_profile(
       pick the one with ``type == "mc"``.
     * Older tokens: ``profiles.mc`` is the UUID; no name attached.
     """
-    pfd = claims.get("pfd")
-    if isinstance(pfd, list):
-        pfd_list = cast(list[object], pfd)
-        for entry in pfd_list:
-            if not isinstance(entry, dict):
-                continue
-            entry_typed = cast(dict[str, Any], entry)
-            if entry_typed.get("type") != "mc":
-                continue
-            name = entry_typed.get("name")
-            uid = entry_typed.get("id")
-            return (
-                name if isinstance(name, str) and name else None,
-                uid.replace("-", "") if isinstance(uid, str) and uid else None,
-            )
-    profiles = claims.get("profiles")
-    if isinstance(profiles, dict):
-        profiles_typed = cast(dict[str, Any], profiles)
-        mc_uid = profiles_typed.get("mc")
-        if isinstance(mc_uid, str) and mc_uid:
-            return None, mc_uid.replace("-", "")
+    pfd_result = _extract_from_pfd(claims.get("pfd"))
+    if pfd_result is not None:
+        return pfd_result
+    profiles_result = _extract_from_profiles(claims.get("profiles"))
+    if profiles_result is not None:
+        return profiles_result
     return None, None

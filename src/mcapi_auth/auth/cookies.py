@@ -354,11 +354,7 @@ async def login_with_cookies_sisu(
     try:
         decoded = base64.b64decode(token_b64 + "==").decode("utf-8")
         parsed_obj: object = json.loads(decoded)
-    except (
-        ValueError,
-        UnicodeDecodeError,
-        json.JSONDecodeError,
-    ) as e:  # NOSONAR intentional: documents distinct error sources
+    except ValueError as e:  # UnicodeDecodeError + json.JSONDecodeError both subclass ValueError
         raise CookieAuthError(f"SISU 'accessToken' fragment is not valid b64+JSON: {e}") from e
     if not isinstance(parsed_obj, list):
         raise CookieAuthError(f"SISU returned non-array payload: {type(parsed_obj).__name__}")
@@ -373,34 +369,40 @@ def extract_sisu_token(sisu: SISUTokens, relying_party: str) -> XboxLiveToken:
     return token
 
 
-def _parse_sisu_array(
-    entries: list[object],
-) -> SISUTokens:  # NOSONAR linear protocol stages; splitting hurts readability
+def _parse_sisu_entry(entry: object) -> tuple[str, XboxLiveToken] | None:
+    """Extract one (relying_party, token) pair from a single SISU array entry, or None if invalid."""
+    if not isinstance(entry, dict):
+        return None
+    entry_typed = cast(dict[str, Any], entry)
+    rp = entry_typed.get("Item1")
+    item2 = entry_typed.get("Item2")
+    if not isinstance(rp, str) or not isinstance(item2, dict):
+        return None
+    item2_typed = cast(dict[str, Any], item2)
+    token = item2_typed.get("Token")
+    display = item2_typed.get("DisplayClaims")
+    if not isinstance(token, str) or not isinstance(display, dict):
+        return None
+    display_typed = cast(dict[str, Any], display)
+    xui = display_typed.get("xui")
+    if not isinstance(xui, list) or not xui:
+        return None
+    xui_first = cast(list[object], xui)[0]
+    if not isinstance(xui_first, dict):
+        return None
+    uhs = cast(dict[str, Any], xui_first).get("uhs")
+    if not isinstance(uhs, str) or not uhs:
+        return None
+    return rp, XboxLiveToken(token=token, userhash=uhs)
+
+
+def _parse_sisu_array(entries: list[object]) -> SISUTokens:
     out: dict[str, XboxLiveToken] = {}
     for entry in entries:
-        if not isinstance(entry, dict):
-            continue
-        entry_typed = cast(dict[str, Any], entry)
-        rp = entry_typed.get("Item1")
-        item2 = entry_typed.get("Item2")
-        if not isinstance(rp, str) or not isinstance(item2, dict):
-            continue
-        item2_typed = cast(dict[str, Any], item2)
-        token = item2_typed.get("Token")
-        display = item2_typed.get("DisplayClaims")
-        if not isinstance(token, str) or not isinstance(display, dict):
-            continue
-        display_typed = cast(dict[str, Any], display)
-        xui = display_typed.get("xui")
-        if not isinstance(xui, list) or not xui:
-            continue
-        xui_first = cast(list[object], xui)[0]
-        if not isinstance(xui_first, dict):
-            continue
-        uhs = cast(dict[str, Any], xui_first).get("uhs")
-        if not isinstance(uhs, str) or not uhs:
-            continue
-        out[rp] = XboxLiveToken(token=token, userhash=uhs)
+        parsed = _parse_sisu_entry(entry)
+        if parsed is not None:
+            rp, tok = parsed
+            out[rp] = tok
     if not out:
         raise CookieAuthError("SISU response contained no usable tokens")
     return SISUTokens(tokens_by_relying_party=out)
@@ -526,11 +528,13 @@ _FORM_URLENCODED = "application/x-www-form-urlencoded"
 
 
 _SERVER_DATA_RE = re.compile(
-    r"var ServerData\s*=\s*({.*?});\s*</script>", re.DOTALL
-)  # NOSONAR reluctant needed: matched JSON has nested } chars
+    r"var ServerData\s*=\s*({.*?});\s*</script>",  # NOSONAR reluctant intentional (ServerData JSON contains '}' chars)
+    re.DOTALL,
+)
 _CONSENT_SERVER_DATA_RE = re.compile(
-    r"ServerData\s*=\s*(\{.+?\});", re.DOTALL
-)  # NOSONAR reluctant needed: matched JSON has nested } chars
+    r"ServerData\s*=\s*(\{.+?\});",  # NOSONAR reluctant intentional (matched JSON has nested '}' chars)
+    re.DOTALL,
+)
 _FORM_ACTION_RE = re.compile(r'action="([^"]+)"')
 _FORM_INPUT_RE = re.compile(r'<input[^>]*name="([^"]+)"[^>]*value="([^"]*)"')
 _CTX_RE = re.compile(r"contextid[=:]([A-F0-9]+)", re.IGNORECASE)
@@ -702,10 +706,7 @@ async def _handle_v2_loopback_interstitial(  # NOSONAR linear protocol stages; s
     try:
         decoder = json.JSONDecoder()
         sd_obj, _idx = decoder.raw_decode(sd_match.group(1))
-    except (
-        json.JSONDecodeError,
-        ValueError,
-    ):  # NOSONAR intentional: documents distinct error sources
+    except ValueError:  # json.JSONDecodeError subclasses ValueError
         return None
     if not isinstance(sd_obj, dict):
         return None

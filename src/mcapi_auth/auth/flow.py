@@ -321,10 +321,18 @@ async def login_browser_v2(
         UUID, username, and rotated refresh token.
     """
     override = resolve_browser_redirect(client_id)
-    actual_host = bind_host if bind_host is not None else (override[0] if override else "127.0.0.1")
-    actual_path = (
-        redirect_path if redirect_path is not None else (override[1] if override else "/callback")
-    )
+    if bind_host is not None:
+        actual_host = bind_host
+    elif override is not None:
+        actual_host = override[0]
+    else:
+        actual_host = "127.0.0.1"
+    if redirect_path is not None:
+        actual_path = redirect_path
+    elif override is not None:
+        actual_path = override[1]
+    else:
+        actual_path = "/callback"
 
     actual_storage: TokenStorage = storage if storage is not None else NullTokenStorage()
 

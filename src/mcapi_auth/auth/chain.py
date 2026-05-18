@@ -568,7 +568,7 @@ class AuthChain:
 
         return _dispatcher
 
-    async def _on_msa_rotated(self, _old: MSATokens | None, _new: MSATokens) -> None:
+    def _on_msa_rotated(self, _old: MSATokens | None, _new: MSATokens) -> None:
         # MSA rotation invalidates everything downstream. Drop the
         # cached holders; they'll be lazily rebuilt on next access.
         self._xbl = None
@@ -588,7 +588,7 @@ class AuthChain:
         self._xsts_expires_at = Instant.now().add(seconds=14 * 3600)
 
     async def _dispatch(self, stage: str, old: Any, new: Any) -> None:
-        for cb in list(self._chain_listeners):
+        for cb in tuple(self._chain_listeners):
             try:
                 result = cb(stage, old, new)
                 if inspect.isawaitable(result):
