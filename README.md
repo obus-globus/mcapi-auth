@@ -499,6 +499,35 @@ and can be passed straight to ``minecraft_authenticate``,
 ``playfab_login_with_xbox``, or any of the other XSTS-consuming helpers.
 Requires the ``[bedrock]`` extra (for ``cryptography``).
 
+### BedrockAuthManager: full chain with lazy refresh
+
+For long-running clients, ``BedrockAuthManager`` (added in 0.13.0) is
+the Bedrock equivalent of ``AuthChain`` — it owns the stable Xbox
+identity (device keypair + UUID + ES384 client keypair) and every
+downstream token (MSA, DeviceToken, the two Sisu legs, PlayFab,
+certificate chain, franchise session, multiplayer token), each in a
+``Holder`` that refreshes on demand:
+
+```python
+from mcapi_auth.auth.bedrock_chain import BedrockAuthManager
+
+mgr = await BedrockAuthManager.login()
+mgr.on_change(lambda *_: state.save(mgr.dump_json()))
+
+while running:
+    mp = await mgr.get_multiplayer_token()   # auto-refreshes
+    await join_server(mp.token)
+
+# later, in another process:
+mgr = BedrockAuthManager.load_json(state.load())
+cert = await mgr.get_certificate_chain()
+```
+
+Persistence keeps the device keypair + UUID stable across runs (Xbox
+remembers them as a single device identity), and only the stages whose
+inputs actually changed are invalidated on refresh — e.g. an MSA
+rotation re-runs the Sisu legs but keeps the DeviceToken.
+
 ## More examples
 
 See [`examples/`](examples/) for runnable scripts covering each entry

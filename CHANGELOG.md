@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-05-18
+
+### Added
+
+- **``BedrockAuthManager`` — full Bedrock-leg auth chain** with lazy
+  refresh and change listeners (parallel to the existing
+  ``AuthChain`` for the Java leg).
+  - Holds every stage in its own ``Holder``: MSA → DeviceToken →
+    Bedrock-Sisu / PlayFab-Sisu → PlayFabToken → certificate chain →
+    franchise session → multiplayer token.
+  - Persists the stable Xbox device identity (ES256 device keypair +
+    device UUID) and the ES384 client identity keypair across
+    serialise / restore round-trips, so the player isn't seen as a
+    new device on every cold start.
+  - ``dump_json()`` / ``load_json()`` serialise the full state
+    (identity + every cached token).
+  - ``on_change(stage, old, new)`` listener fires on every rotation;
+    invalidation cascades drop only the downstream stages whose
+    inputs changed (e.g. MSA rotation keeps the device token).
+  - ``login()`` runs the device-code flow end-to-end and (by default)
+    primes the chain all the way down to the multiplayer token so a
+    caller can immediately ``dump_json()``.
+  - ``from_msa()`` bridges an existing ``AuthChain``'s MSA tokens
+    into a Bedrock manager without re-running device code.
+- ``DEFAULT_BEDROCK_GAME_VERSION`` constant for the franchise-service
+  ``gameVersion`` field; overridable per manager.
+
+### Notes
+
+- The XSTS tokens surfaced by ``get_bedrock_xsts`` /
+  ``get_playfab_xsts`` remain ``XblXstsToken`` instances — shape-
+  compatible with ``XSTSToken`` (both have ``.token`` and
+  ``.userhash``); ``# type: ignore[arg-type]`` is still required at
+  the call site for static type-checkers. A proper protocol
+  unification is on the roadmap.
+
 ## [0.12.0] - 2026-05-18
 
 ### Added
