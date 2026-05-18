@@ -39,7 +39,7 @@ from ..exceptions import HttpError
 async def fetch_blocked_servers(*, http_client: httpx.AsyncClient | None = None) -> frozenset[str]:
     """Download the current blocklist as an immutable set of lowercase SHA1 hex strings."""
     async with acquire_client(http_client) as client:
-        r = await client.get(BLOCKED_SERVERS_URL)
+        r = await client.get(BLOCKED_SERVERS_URL, headers={"Accept": "*/*"})
     if r.status_code != 200:
         raise HttpError(r.status_code, r.text, url=str(r.request.url))
     return frozenset(line.strip().lower() for line in r.text.splitlines() if line.strip())

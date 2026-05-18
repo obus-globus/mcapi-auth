@@ -81,9 +81,17 @@ async def test_is_realms_available_returns_bool() -> None:
 
 
 @respx.mock
-async def test_is_realms_tos_agreed_returns_false_on_401() -> None:
-    respx.get(f"{REALMS_BASE}/mco/tos/agreed").respond(status_code=401, text="nope")
+async def test_is_realms_tos_agreed_returns_false_when_unagreed() -> None:
+    respx.get(f"{REALMS_BASE}/mco/available").respond(
+        status_code=401, text='{"errorCode":"terms-of-service-not-accepted"}'
+    )
     assert await is_realms_tos_agreed(_session()) is False
+
+
+@respx.mock
+async def test_is_realms_tos_agreed_returns_true_when_endpoint_succeeds() -> None:
+    respx.get(f"{REALMS_BASE}/mco/available").respond(text="true")
+    assert await is_realms_tos_agreed(_session()) is True
 
 
 @respx.mock

@@ -80,7 +80,7 @@ REALMS_BASE: Final = "https://pc.realms.minecraft.net"
 # Default ``version`` cookie. Realms gatekeeps clients on supported
 # release versions; this constant is bumped when Mojang rolls out a new
 # version. Callers can pass an explicit ``game_version`` to override.
-DEFAULT_REALMS_GAME_VERSION: Final = "1.21.4"
+DEFAULT_REALMS_GAME_VERSION: Final = "26.1.2"
 
 
 class RealmsTosError(HttpError):
@@ -236,10 +236,12 @@ def _realms_headers(
     uuid: str,
     username: str,
     game_version: str,
+    *,
+    accept: str = "application/json",
 ) -> dict[str, str]:
     return {
         "Cookie": f"sid=token:{access_token}:{uuid};user={username};version={game_version}",
-        "Accept": "application/json",
+        "Accept": accept,
     }
 
 
@@ -265,8 +267,10 @@ async def fetch_realms_compatible(
         name,
         game_version,
         http_client,
+        accept="*/*",
     )
-    return _validate(response, RealmsCompatibility)
+    body = response.text.strip().strip('"')
+    return RealmsCompatibility(compatibility=body)
 
 
 async def is_realms_available(
@@ -286,6 +290,7 @@ async def is_realms_available(
         name,
         game_version,
         http_client,
+        accept="*/*",
     )
     # The endpoint returns the literal text "true" / "false" (no JSON).
     body = response.text.strip().lower()
@@ -300,19 +305,23 @@ async def is_realms_tos_agreed(
     game_version: str = DEFAULT_REALMS_GAME_VERSION,
     http_client: httpx.AsyncClient | None = None,
 ) -> bool:
-    """``True`` if the account has accepted the Realms TOS."""
-    access, uuid_, name = _resolve_identity(token, uuid, username)
-    async with acquire_client(http_client) as c:
-        response = await c.get(
-            f"{REALMS_BASE}/mco/tos/agreed",
-            headers=_realms_headers(access, uuid_, name, game_version),
+    """``True`` if the account has accepted the Realms TOS.
+
+    Mojang no longer exposes ``GET /mco/tos/agreed`` (it now returns 405
+    Method Not Allowed). Instead we probe a cheap endpoint and infer the
+    TOS state from whether Mojang raises :class:`RealmsTosError`.
+    """
+    try:
+        await is_realms_available(
+            token,
+            uuid=uuid,
+            username=username,
+            game_version=game_version,
+            http_client=http_client,
         )
-    if response.status_code == 200:
-        return response.text.strip().lower() in {"true", '"true"'}
-    if response.status_code in {401, 403}:
+    except RealmsTosError:
         return False
-    _raise_for_status(response)
-    return False  # unreachable
+    return True
 
 
 async def accept_realms_tos(
@@ -425,11 +434,13 @@ async def _realms_get(
     username: str,
     game_version: str,
     http_client: httpx.AsyncClient | None,
+    *,
+    accept: str = "application/json",
 ) -> httpx.Response:
     async with acquire_client(http_client) as c:
         response = await c.get(
             f"{REALMS_BASE}{path}",
-            headers=_realms_headers(access_token, uuid, username, game_version),
+            headers=_realms_headers(access_token, uuid, username, game_version, accept=accept),
         )
     if response.status_code >= 400:
         _raise_for_status(response)

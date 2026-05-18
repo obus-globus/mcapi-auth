@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.16.1] - 2026-05-18
+
+### Fixed
+
+- **Realms / blocked-servers endpoints reject `Accept: application/json`.**
+  Mojang's `/mco/client/compatible`, `/mco/available`, and
+  `sessionserver.mojang.com/blockedservers` now return HTTP 406 when
+  asked for JSON (they only serve plain text). All three callers now
+  send `Accept: */*` and parse the response body as text. Caught by
+  the new `tests-e2e/test_api_coverage.py` against the live API.
+- **`realms.is_realms_tos_agreed()` rewritten** to probe
+  `GET /mco/available` and infer the TOS state from whether Mojang
+  raises `RealmsTosError`. Mojang removed `GET /mco/tos/agreed`
+  (now returns 405 Method Not Allowed); the new implementation
+  preserves the same boolean contract.
+- **`realms.fetch_realms_compatible()` no longer trips Pydantic**
+  validation on the plain-text body — it now wraps the response text
+  in `RealmsCompatibility` directly.
+- Default `DEFAULT_REALMS_GAME_VERSION` bumped from `"1.21.4"` to
+  `"26.1.2"` to match the current Mojang release. Callers can still
+  override via the `game_version=` keyword.
+
 ## [0.16.0] - 2026-05-18
 
 ### Fixed
