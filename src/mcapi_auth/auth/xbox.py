@@ -68,11 +68,37 @@ async def authenticate_xbl(
 ) -> XboxLiveToken:
     """Exchange a Microsoft access token for an Xbox Live token.
 
-    Set ``use_d_prefix=True`` (the default) for tokens minted by the
-    Minecraft Launcher / MSA "consumers" OAuth flows — XBL expects the
-    RPS ticket prefixed with ``d=`` for those. Set it to ``False`` when
-    using non-public Azure-AD client_ids (e.g. PrismLauncher's own
-    client) which mint tokens that XBL accepts raw.
+    The right ``use_d_prefix`` value depends on **which OAuth endpoint
+    minted** ``msa_access_token``:
+
+    * **v2 / Azure-AD ``consumers`` endpoint** (modern flows — Xbox app,
+      Xbox-Gamepass, PrismLauncher, Liquid Launcher, the
+      ``MsaApplicationConfig.v2_consumers`` factory): tokens start with
+      ``eyJ…`` (JWT-shaped) and **must** be wrapped as ``d={token}``.
+      Pass ``use_d_prefix=True`` (the default).
+
+    * **v1 / Live-Connect endpoint** (legacy Minecraft Launcher client
+      ``00000000402b5328`` with scope
+      ``service::user.auth.xboxlive.com::MBI_SSL``, Bedrock device
+      clients, the ``MsaApplicationConfig.v1_launcher`` factory):
+      tokens are opaque ``EwD…`` RPS tickets and **must NOT** be
+      wrapped — XBL returns ``401 Unauthorized`` if you prefix them
+      with ``d=``. Pass ``use_d_prefix=False``.
+
+    If you're driving the auth chain through :class:`AuthChain`, this
+    is handled for you — ``MsaApplicationConfig.xbl_use_d_prefix`` is
+    set correctly by the ``v1_launcher`` / ``v2_consumers`` factories
+    and the chain forwards it on every refresh. The standalone
+    ``authenticate_xbl`` is mostly useful for ad-hoc / testing code
+    that owns its own token plumbing — those callers need to choose
+    the right prefix mode themselves.
+
+    Args:
+        msa_access_token: The MS access token to exchange.
+        use_d_prefix: Whether to wrap the token as ``d={token}`` in the
+            ``RpsTicket`` payload. See above for which endpoint needs
+            which.
+        http_client: Optional :class:`httpx.AsyncClient` to reuse.
     """
     rps_ticket = f"d={msa_access_token}" if use_d_prefix else msa_access_token
     payload = {

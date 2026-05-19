@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.3] - 2026-05-19
+
+### Documentation
+
+- **Clarify `authenticate_xbl(use_d_prefix=…)` semantics.** The old
+  docstring framed ``True`` as "right for Minecraft Launcher / MSA
+  consumers" but called out only PrismLauncher's "non-public Azure-AD
+  client" as the false-case, glossing over the **legacy v1 Minecraft
+  Launcher** (client ``00000000402b5328``, Live-Connect
+  ``MBI_SSL`` scope) which mints raw ``EwD…`` RPS tickets and gets a
+  ``401`` from XBL if you wrap them with ``d=``. The docstring now
+  spells out the v1 vs v2 split explicitly and points at the
+  ``v1_launcher`` / ``v2_consumers`` factories. No code change —
+  callers driving via :class:`AuthChain` were already routed
+  correctly via :attr:`MsaApplicationConfig.xbl_use_d_prefix`; this
+  only affects ad-hoc callers of the standalone function.
+
 ## [0.19.2] - 2026-05-19
 
 ### Changed
