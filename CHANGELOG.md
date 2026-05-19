@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-05-18
+
+### Added
+
+- **SISU flow can now also mint MSA tokens.**
+  `login_with_cookies_sisu(..., also_exchange_msa=True)` POSTs the
+  ``code=`` from the SISU callback to ``oauth20_token.srf`` and attaches
+  the resulting :class:`MSATokens` to
+  ``SISUTokens.msa``. Useful for FIDO-locked accounts that can only
+  reach Minecraft through SISU but would otherwise have to re-capture
+  cookies on every XBL expiry — with this they get a real MSA refresh
+  token. ``msa_client_id`` / ``msa_redirect_uri`` / ``msa_scope`` are
+  available as overrides; defaults match the SISU tenant (``tid``) and
+  return URL.
+- **Typed `CookieAuthError` subclasses for recovery dispatch.** Cookie
+  failures are now classified so callers can pick the right recovery
+  path without string-matching error messages:
+  - `StaleCookiesError` — cookies are expired / signed out (re-capture).
+  - `FidoRequiredError` — account is FIDO/passkey-locked (fall back to
+    SISU).
+  - `ConsentRequiredError` — Microsoft served an MFA / app-consent
+    interstitial we can't auto-click (interactive sign-in needed).
+  The base `CookieAuthError` still catches everything for callers that
+  don't care about the reason. Errors now also carry forensics
+  (``status_code``, ``body_preview``, ``location``) to help with
+  logging and diagnostics.
+
+### Changed
+
+- `SISUTokens` gained an optional ``msa: MSATokens | None`` field
+  (default ``None``). Existing call sites that ignore it are
+  unaffected.
+
 ## [0.18.0] - 2026-05-18
 
 ### Added

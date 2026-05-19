@@ -46,7 +46,7 @@ import re
 from collections.abc import AsyncGenerator, Iterable, Mapping
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from typing import Any, cast
+from typing import Any, Final, cast
 from urllib.parse import parse_qs, urlencode, urlparse
 
 import httpx
@@ -74,8 +74,11 @@ from .xbox import XboxLiveToken
 
 __all__ = [
     "BrowserCookie",
+    "ConsentRequiredError",
     "CookieAuthError",
+    "FidoRequiredError",
     "SISUTokens",
+    "StaleCookiesError",
     "cookies_to_header",
     "extract_sisu_token",
     "login_with_cookies_msa_v1",
@@ -118,7 +121,132 @@ async def _acquire_for_cookies(
 
 
 class CookieAuthError(MSAFlowError):
-    """A cookie-based auth flow couldn't complete (FIDO / passkey block, etc.)."""
+    """A cookie-based auth flow couldn't complete (FIDO / passkey block, etc.).
+
+    Concrete subclasses signal *why* it failed so callers can pick the
+    right recovery path:
+
+    * :class:`StaleCookiesError` — cookies are expired / not signed in.
+      The recovery is to re-run the browser cookie capture step.
+    * :class:`FidoRequiredError` — the account is FIDO / passkey-locked.
+      The Live-Connect v1 flow can't proceed; fall back to
+      :func:`login_with_cookies_sisu`.
+    * :class:`ConsentRequiredError` — Microsoft served an MFA / app
+      consent interstitial we don't auto-click. Manual sign-in required.
+
+    Generic / unknown failures still raise the base :class:`CookieAuthError`.
+
+    Attributes carry forensics that help the caller decide what to do:
+
+    Attributes:
+        status_code: HTTP status of the response that gave up.
+        body_preview: First ~512 chars of the body (PII-redacted by
+            convention; we trim aggressively).
+        location: The ``Location:`` header if any.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        status_code: int | None = None,
+        body_preview: str | None = None,
+        location: str | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.status_code: int | None = status_code
+        self.body_preview: str | None = body_preview
+        self.location: str | None = location
+
+
+class StaleCookiesError(CookieAuthError):
+    """The browser cookies are expired or refer to a signed-out session.
+
+    Recovery: re-run the browser cookie capture step (the user has to
+    sign in again in the headless browser).
+    """
+
+
+class FidoRequiredError(CookieAuthError):
+    """The Microsoft account is FIDO / passkey-locked.
+
+    The Live-Connect v1 cookie flow can't bypass FIDO. Recovery: call
+    :func:`login_with_cookies_sisu` instead — SISU is one of the few
+    paths Microsoft still allows for FIDO-only accounts.
+    """
+
+
+class ConsentRequiredError(CookieAuthError):
+    """Microsoft served an MFA / app-consent interstitial we don't auto-click.
+
+    Typical for accounts with conditional-access policies or first-time
+    consent for the launcher client. Recovery: have the user sign in
+    interactively once to grant consent, then retry.
+    """
+
+
+_FIDO_BODY_MARKERS: Final = (
+    "passkey",
+    "windowshello",
+    "windows hello",
+    "fido2",
+    "/fido/",
+    "fidoauth",
+    "security key",
+    "biometric",
+)
+_STALE_BODY_MARKERS: Final = (
+    "your account or password is incorrect",
+    "we couldn't find an account",
+    "couldn't sign you in",
+    "couldn&#39;t sign you in",
+    "session has expired",
+    "sign in to your account",
+    'id="i0116"',  # the login form's email field
+)
+_CONSENT_BODY_MARKERS: Final = (
+    "/consent/",
+    "permissions requested",
+    "let this app access your info",
+    "needs your permission",
+    "verify your identity",
+    "we need to verify",
+)
+
+
+def _truncate(text: str | None, *, max_chars: int = 512) -> str | None:
+    if text is None:
+        return None
+    return text if len(text) <= max_chars else text[:max_chars] + "…"
+
+
+def _classify_cookie_failure(
+    *,
+    status_code: int | None,
+    body: str | None,
+    location: str | None,
+) -> type[CookieAuthError]:
+    """Pick the most specific :class:`CookieAuthError` subclass for a failure.
+
+    Heuristic: scan the response body (and ``Location:`` header) for
+    well-known Microsoft markers. Falls back to the base class when no
+    marker matches.
+    """
+    lc_body = (body or "").lower()
+    lc_loc = (location or "").lower()
+    haystack = lc_body + " " + lc_loc
+    if any(marker in haystack for marker in _FIDO_BODY_MARKERS):
+        return FidoRequiredError
+    if any(marker in haystack for marker in _CONSENT_BODY_MARKERS):
+        return ConsentRequiredError
+    if any(marker in haystack for marker in _STALE_BODY_MARKERS):
+        return StaleCookiesError
+    # A 200 OK on the Live-Connect /oauth20_authorize.srf endpoint means
+    # Microsoft handed us the sign-in form instead of an auth code —
+    # cookies are stale.
+    if status_code == 200 and "login" in lc_loc + lc_body[:200]:
+        return StaleCookiesError
+    return CookieAuthError
 
 
 @dataclass(frozen=True, slots=True)
@@ -142,9 +270,16 @@ class SISUTokens:
     Keyed by the *relying party* the token is bound to. Useful when one
     SISU run mints both an Xbox Live token (``"http://auth.xboxlive.com"``)
     and an XSTS token (``"rp://api.minecraftservices.com/"``).
+
+    When :func:`login_with_cookies_sisu` is called with
+    ``also_exchange_msa=True`` the ``msa`` field carries the MSA
+    access/refresh tokens minted from the same SISU OAuth code — useful
+    for FIDO-locked accounts that need an MS refresh token without going
+    through the Live-Connect cookie flow (which FIDO blocks).
     """
 
     tokens_by_relying_party: dict[str, XboxLiveToken]
+    msa: MSATokens | None = None
 
     def get(self, relying_party: str) -> XboxLiveToken | None:
         """Return the token for ``relying_party`` if SISU minted one."""
@@ -257,10 +392,18 @@ async def login_with_cookies_msa_v1(
             follow_redirects=False,
         )
         if resp.status_code != 302:
-            raise CookieAuthError(
+            err_cls = _classify_cookie_failure(
+                status_code=resp.status_code,
+                body=resp.text,
+                location=resp.headers.get("location"),
+            )
+            raise err_cls(
                 "Live-Connect /oauth20_authorize.srf did not 302 — "
                 "the account is likely FIDO-enforced or the cookies are stale "
-                f"(status={resp.status_code})"
+                f"(status={resp.status_code})",
+                status_code=resp.status_code,
+                body_preview=_truncate(resp.text),
+                location=resp.headers.get("location"),
             )
         location = resp.headers.get("location", "")
         if "code=" not in location:  # NOSONAR intentional: inlined for readability
@@ -303,16 +446,50 @@ async def login_with_cookies_sisu(
     tid: str = SISU_DEFAULT_TID,
     return_url: str = SISU_DEFAULT_RU,
     user_agent: str = DEFAULT_USER_AGENT,
+    also_exchange_msa: bool = False,
+    msa_client_id: str | None = None,
+    msa_redirect_uri: str | None = None,
+    msa_scope: str = LIVE_CONNECT_SCOPE_MBI_SSL,
     http_client: httpx.AsyncClient | None = None,
 ) -> SISUTokens:
     """SISU (Xbox SSO) flow — returns XBL/XSTS tokens directly.
 
     Use as a fallback when :func:`login_with_cookies_msa_v1` returns
     :class:`CookieAuthError` (typically because FIDO is enforced on the
-    account). The output does **not** carry an MS access/refresh token,
-    so you can't refresh — you'll need to re-run SISU on token expiry.
+    account).
 
-    Pass ``http_client`` to route through a proxy or share a pool.
+    Args:
+        cookie_header: Pre-flattened ``Cookie:`` header value for
+            ``login.live.com``.
+        cobrand_id: SISU co-brand ID (defaults to the Minecraft launcher's).
+        tid: SISU tenant / Live-Connect client_id. The default is the
+            Minecraft launcher's ``896928775``.
+        return_url: SISU ``ru=`` query parameter.
+        user_agent: User-Agent header sent on every hop.
+        also_exchange_msa: If ``True``, also POST the ``code=`` from the
+            SISU callback to ``oauth20_token.srf`` to mint an MSA
+            access/refresh-token pair. The resulting tokens are attached
+            to ``SISUTokens.msa``. Defaults to ``False`` for back-compat.
+            This is useful for FIDO-locked accounts that can only reach
+            Minecraft through SISU and would otherwise have to re-capture
+            cookies on every XBL expiry.
+        msa_client_id: Override the ``client_id`` used in the MSA token
+            exchange. Defaults to ``tid`` (the SISU tenant). The
+            ``code=`` returned by SISU is bound to this client.
+        msa_redirect_uri: Override the ``redirect_uri`` used in the MSA
+            token exchange. Defaults to :data:`SISU_DEFAULT_RU` (the
+            same URL SISU 302'd us back to).
+        msa_scope: OAuth scope to request in the MSA exchange. Defaults
+            to ``service::user.auth.xboxlive.com::MBI_SSL`` (what SISU
+            itself uses).
+        http_client: Optional :class:`httpx.AsyncClient` to reuse.
+
+    Raises:
+        StaleCookiesError: ``login.live.com`` declined the cookies.
+        FidoRequiredError: The account is FIDO/passkey-locked and even
+            SISU can't bypass it.
+        ConsentRequiredError: Microsoft served an interstitial.
+        CookieAuthError: Any other SISU-flow failure.
     """
     sisu_url = f"{SISU_CONNECT_URL}?state=login&cobrandId={cobrand_id}&tid={tid}&ru={return_url}"
     async with _acquire_for_cookies(http_client) as client:
@@ -320,7 +497,17 @@ async def login_with_cookies_sisu(
             sisu_url, headers={"User-Agent": user_agent}, follow_redirects=False
         )
         if resp.status_code != 302:
-            raise CookieAuthError(f"SISU /connect did not 302: status={resp.status_code}")
+            err_cls = _classify_cookie_failure(
+                status_code=resp.status_code,
+                body=resp.text,
+                location=resp.headers.get("location"),
+            )
+            raise err_cls(
+                f"SISU /connect did not 302: status={resp.status_code}",
+                status_code=resp.status_code,
+                body_preview=_truncate(resp.text),
+                location=resp.headers.get("location"),
+            )
         login_url = resp.headers["location"]
 
         resp = await client.get(
@@ -329,13 +516,23 @@ async def login_with_cookies_sisu(
             follow_redirects=False,
         )
         if resp.status_code != 302:
-            raise CookieAuthError(
+            err_cls = _classify_cookie_failure(
+                status_code=resp.status_code,
+                body=resp.text,
+                location=resp.headers.get("location"),
+            )
+            raise err_cls(
                 f"SISU login.live.com did not 302 — cookies likely stale "
-                f"or FIDO-enforced (status={resp.status_code})"
+                f"or FIDO-enforced (status={resp.status_code})",
+                status_code=resp.status_code,
+                body_preview=_truncate(resp.text),
+                location=resp.headers.get("location"),
             )
         callback_url = resp.headers["location"]
         if "code=" not in callback_url:
             raise CookieAuthError(f"SISU callback missing 'code=': {callback_url!r}")
+        sisu_code_values = _parse_qs(_query_of(callback_url)).get("code", [])
+        sisu_code = sisu_code_values[0] if sisu_code_values and sisu_code_values[0] else None
 
         resp = await client.get(
             callback_url, headers={"User-Agent": user_agent}, follow_redirects=False
@@ -344,6 +541,23 @@ async def login_with_cookies_sisu(
             raise CookieAuthError(f"SISU callback did not 302: status={resp.status_code}")
 
         final_url = resp.headers.get("location", "")
+
+        # Optional: exchange the SISU code for MSA tokens before exiting
+        # the AsyncClient ctx so we share the connection pool.
+        msa_tokens: MSATokens | None = None
+        if also_exchange_msa:
+            if sisu_code is None:
+                raise CookieAuthError(
+                    "also_exchange_msa=True but SISU callback URL had no usable 'code='"
+                )
+            msa_tokens = await _exchange_sisu_code_for_msa(
+                client,
+                code=sisu_code,
+                client_id=msa_client_id or tid,
+                redirect_uri=msa_redirect_uri or return_url,
+                scope=msa_scope,
+                user_agent=user_agent,
+            )
 
     fragment = _fragment_of(final_url)
     frag_params = _parse_qs(fragment)
@@ -358,7 +572,54 @@ async def login_with_cookies_sisu(
         raise CookieAuthError(f"SISU 'accessToken' fragment is not valid b64+JSON: {e}") from e
     if not isinstance(parsed_obj, list):
         raise CookieAuthError(f"SISU returned non-array payload: {type(parsed_obj).__name__}")
-    return _parse_sisu_array(cast(list[object], parsed_obj))
+    parsed_sisu = _parse_sisu_array(cast(list[object], parsed_obj))
+    if msa_tokens is not None:
+        return SISUTokens(
+            tokens_by_relying_party=parsed_sisu.tokens_by_relying_party, msa=msa_tokens
+        )
+    return parsed_sisu
+
+
+async def _exchange_sisu_code_for_msa(
+    client: httpx.AsyncClient,
+    *,
+    code: str,
+    client_id: str,
+    redirect_uri: str,
+    scope: str,
+    user_agent: str,
+) -> MSATokens:
+    """POST the SISU OAuth code to ``oauth20_token.srf`` for MSA tokens.
+
+    SISU's first hop is a normal Live-Connect OAuth ``response_type=code``
+    handshake under the hood, so the code Microsoft 302s back to the
+    callback is exchangeable at the same token endpoint the v1 cookie
+    flow uses. The trick is matching the ``client_id`` / ``redirect_uri``
+    pair the SISU authorize request used — by default those are the SISU
+    ``tid`` and ``return_url``, but callers may override.
+    """
+    resp = await client.post(
+        LIVE_CONNECT_TOKEN_URL,
+        data={
+            "client_id": client_id,
+            "code": code,
+            "grant_type": "authorization_code",
+            "redirect_uri": redirect_uri,
+            "scope": scope,
+        },
+        headers={
+            "Content-Type": _FORM_URLENCODED,
+            "User-Agent": user_agent,
+        },
+        follow_redirects=False,
+    )
+    if resp.status_code != 200:
+        raise CookieAuthError(
+            f"SISU MSA token exchange failed: status={resp.status_code} body={resp.text!r}",
+            status_code=resp.status_code,
+            body_preview=_truncate(resp.text),
+        )
+    return _parse_token_response(resp)
 
 
 def extract_sisu_token(sisu: SISUTokens, relying_party: str) -> XboxLiveToken:
@@ -488,7 +749,17 @@ async def login_with_cookies_msa_v2_loopback(
                 f"(location={resp.headers.get('location', '')!r})"
             )
         if resp.status_code != 200:
-            raise CookieAuthError(f"login.live.com returned unexpected status {resp.status_code}")
+            err_cls = _classify_cookie_failure(
+                status_code=resp.status_code,
+                body=resp.text,
+                location=resp.headers.get("location"),
+            )
+            raise err_cls(
+                f"login.live.com returned unexpected status {resp.status_code}",
+                status_code=resp.status_code,
+                body_preview=_truncate(resp.text),
+                location=resp.headers.get("location"),
+            )
 
         # 200 OK with an HTML body — Microsoft is asking us to follow
         # the "tile click" / consent dance. Parse the embedded
@@ -501,10 +772,15 @@ async def login_with_cookies_msa_v2_loopback(
             user_agent=user_agent,
         )
         if code is None:
-            raise CookieAuthError(
+            err_cls = _classify_cookie_failure(status_code=200, body=resp.text, location=None)
+            if err_cls is CookieAuthError:
+                err_cls = ConsentRequiredError
+            raise err_cls(
                 "v2-loopback HTML flow finished without an auth code — "
                 "Microsoft likely served an interstitial we don't handle. "
-                "Try the Live-Connect or SISU flow instead."
+                "Try the Live-Connect or SISU flow instead.",
+                status_code=200,
+                body_preview=_truncate(resp.text),
             )
         return await _exchange_v2_loopback_code(
             client,

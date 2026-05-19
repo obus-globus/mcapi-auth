@@ -21,21 +21,26 @@ from mcapi_auth._constants import (
     MINECRAFT_LAUNCHER_V1_CLIENT_ID,
     PRISM_LAUNCHER_CLIENT_ID,
     SISU_CONNECT_URL,
+    SISU_DEFAULT_RU,
+    SISU_DEFAULT_TID,
     XBOX_APP_IOS_CLIENT_ID,
     XBOX_GAMEPASS_IOS_CLIENT_ID,
     is_v1_client_id,
 )
 from mcapi_auth.auth import (
     BrowserCookie,
+    ConsentRequiredError,
     CookieAuthError,
+    FidoRequiredError,
     SISUTokens,
+    StaleCookiesError,
     cookies_to_header,
     extract_sisu_token,
     login_with_cookies_msa_v1,
     login_with_cookies_msa_v2_loopback,
     login_with_cookies_sisu,
 )
-from mcapi_auth.auth.cookies import _build_cookie_jar
+from mcapi_auth.auth.cookies import _build_cookie_jar, _classify_cookie_failure
 
 # ---- cookies_to_header / _build_cookie_jar ---------------------------------
 
@@ -450,3 +455,190 @@ async def test_prism_default_client_id_is_prism_launcher() -> None:
     )
 
     assert _query_client_id(str(authorize_route.calls.last.request.url)) == PRISM_LAUNCHER_CLIENT_ID
+
+
+# ---- SISU + MSA exchange ---------------------------------------------------
+
+
+@respx.mock
+async def test_login_with_cookies_sisu_with_msa_exchange() -> None:
+    """When also_exchange_msa=True, SISUTokens.msa is populated from oauth20_token.srf."""
+    respx.get(re.compile(rf"^{re.escape(SISU_CONNECT_URL)}")).mock(
+        return_value=httpx.Response(
+            302, headers={"location": "https://login.live.com/login.srf?wa=wsignin"}
+        )
+    )
+    respx.get("https://login.live.com/login.srf").mock(
+        return_value=httpx.Response(
+            302,
+            headers={"location": "https://sisu.xboxlive.com/connect/callback?code=SISU-CODE-42"},
+        )
+    )
+    respx.get(re.compile(r"^https://sisu\.xboxlive\.com/connect/callback")).mock(
+        return_value=httpx.Response(
+            302,
+            headers={
+                "location": (
+                    "https://www.minecraft.net/msaprofile/msa-profile#accessToken="
+                    + _sisu_payload()
+                )
+            },
+        )
+    )
+    token_route = respx.post(LIVE_CONNECT_TOKEN_URL).mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "access_token": "msa-access-token",
+                "refresh_token": "msa-refresh-token",
+                "expires_in": 86400,
+                "token_type": "bearer",
+                "user_id": "u-1",
+            },
+        )
+    )
+
+    sisu = await login_with_cookies_sisu("MSPAuth=foo", also_exchange_msa=True)
+
+    assert sisu.msa is not None
+    assert sisu.msa.access_token == "msa-access-token"
+    assert sisu.msa.refresh_token == "msa-refresh-token"
+    # XBL still extracted normally.
+    assert extract_sisu_token(sisu, "http://xboxlive.com").token == "xbl-token"
+    # The token-exchange request carried the SISU code + sisu tid + return url.
+    sent = token_route.calls.last.request
+    sent_body = parse_qs(sent.content.decode())
+    assert sent_body["code"] == ["SISU-CODE-42"]
+    assert sent_body["grant_type"] == ["authorization_code"]
+    # default client_id = SISU tid
+    assert sent_body["client_id"] == [SISU_DEFAULT_TID]
+    assert sent_body["redirect_uri"] == [SISU_DEFAULT_RU]
+
+
+@respx.mock
+async def test_login_with_cookies_sisu_msa_exchange_failure_raises() -> None:
+    respx.get(re.compile(rf"^{re.escape(SISU_CONNECT_URL)}")).mock(
+        return_value=httpx.Response(302, headers={"location": "https://login.live.com/login.srf"})
+    )
+    respx.get("https://login.live.com/login.srf").mock(
+        return_value=httpx.Response(
+            302,
+            headers={"location": "https://sisu.xboxlive.com/connect/callback?code=ABC"},
+        )
+    )
+    respx.get(re.compile(r"^https://sisu\.xboxlive\.com/connect/callback")).mock(
+        return_value=httpx.Response(
+            302,
+            headers={
+                "location": (
+                    "https://www.minecraft.net/msaprofile/msa-profile#accessToken="
+                    + _sisu_payload()
+                )
+            },
+        )
+    )
+    respx.post(LIVE_CONNECT_TOKEN_URL).mock(
+        return_value=httpx.Response(400, json={"error": "invalid_grant"})
+    )
+
+    with pytest.raises(CookieAuthError, match="SISU MSA token exchange failed"):
+        await login_with_cookies_sisu("MSPAuth=foo", also_exchange_msa=True)
+
+
+@respx.mock
+async def test_login_with_cookies_sisu_default_no_msa() -> None:
+    """Without the flag, msa stays None and oauth20_token.srf is never hit."""
+    respx.get(re.compile(rf"^{re.escape(SISU_CONNECT_URL)}")).mock(
+        return_value=httpx.Response(302, headers={"location": "https://login.live.com/login.srf"})
+    )
+    respx.get("https://login.live.com/login.srf").mock(
+        return_value=httpx.Response(
+            302,
+            headers={"location": "https://sisu.xboxlive.com/connect/callback?code=ABC"},
+        )
+    )
+    respx.get(re.compile(r"^https://sisu\.xboxlive\.com/connect/callback")).mock(
+        return_value=httpx.Response(
+            302,
+            headers={
+                "location": (
+                    "https://www.minecraft.net/msaprofile/msa-profile#accessToken="
+                    + _sisu_payload()
+                )
+            },
+        )
+    )
+    token_route = respx.post(LIVE_CONNECT_TOKEN_URL).mock(return_value=httpx.Response(200, json={}))
+
+    sisu = await login_with_cookies_sisu("MSPAuth=foo")
+    assert sisu.msa is None
+    assert token_route.call_count == 0
+
+
+# ---- CookieAuthError subclass dispatch -------------------------------------
+
+
+def test_classify_picks_fido_on_passkey_body() -> None:
+    cls = _classify_cookie_failure(
+        status_code=200,
+        body="<html>Sign in with a passkey</html>",
+        location=None,
+    )
+    assert cls is FidoRequiredError
+
+
+def test_classify_picks_consent_on_consent_marker() -> None:
+    cls = _classify_cookie_failure(
+        status_code=200,
+        body="Permissions requested by Minecraft",
+        location=None,
+    )
+    assert cls is ConsentRequiredError
+
+
+def test_classify_picks_stale_on_login_form() -> None:
+    cls = _classify_cookie_failure(
+        status_code=200,
+        body='<input id="i0116" name="loginfmt"/>',
+        location=None,
+    )
+    assert cls is StaleCookiesError
+
+
+def test_classify_falls_back_to_base() -> None:
+    cls = _classify_cookie_failure(status_code=500, body="oops", location=None)
+    assert cls is CookieAuthError
+
+
+def test_error_subclasses_still_match_base() -> None:
+    err = FidoRequiredError("nope", status_code=200, body_preview="passkey here")
+    assert isinstance(err, CookieAuthError)
+    assert err.status_code == 200
+    assert err.body_preview == "passkey here"
+
+
+@respx.mock
+async def test_v1_flow_raises_fido_required_on_passkey_page() -> None:
+    respx.get(LIVE_CONNECT_AUTHORIZE_URL).mock(
+        return_value=httpx.Response(
+            200,
+            text="<html>Use your passkey to sign in</html>",
+        )
+    )
+    with pytest.raises(FidoRequiredError):
+        await login_with_cookies_msa_v1("MSPAuth=foo", client_id=LIQUIDLAUNCHER_CLIENT_ID)
+
+
+@respx.mock
+async def test_sisu_raises_stale_cookies_on_login_form() -> None:
+    respx.get(re.compile(rf"^{re.escape(SISU_CONNECT_URL)}")).mock(
+        return_value=httpx.Response(302, headers={"location": "https://login.live.com/login.srf"})
+    )
+    respx.get("https://login.live.com/login.srf").mock(
+        return_value=httpx.Response(
+            200,
+            text='<input id="i0116" name="loginfmt"/>',
+        )
+    )
+    with pytest.raises(StaleCookiesError):
+        await login_with_cookies_sisu("MSPAuth=foo")
