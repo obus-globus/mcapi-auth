@@ -220,6 +220,31 @@ def _truncate(text: str | None, *, max_chars: int = 512) -> str | None:
     return text if len(text) <= max_chars else text[:max_chars] + "…"
 
 
+_SERVERDATA_RE: Final = re.compile(r"ServerData\s*=\s*(\{.+?\})\s*;", re.DOTALL)
+
+
+def _parse_serverdata(body: str | None) -> dict[str, object] | None:
+    """Extract the ``ServerData = {...};`` blob that Microsoft inlines.
+
+    Returns the parsed object (typed as ``dict[str, object]`` for the
+    callers' convenience) or ``None`` if the blob isn't present or isn't
+    valid JSON. ``ServerData`` is plain JSON in practice even though the
+    surrounding context is JavaScript.
+    """
+    if not body:
+        return None
+    match = _SERVERDATA_RE.search(body)
+    if match is None:
+        return None
+    try:
+        parsed: object = json.loads(match.group(1))
+    except ValueError:
+        return None
+    if not isinstance(parsed, dict):
+        return None
+    return cast(dict[str, object], parsed)
+
+
 def _classify_cookie_failure(
     *,
     status_code: int | None,
@@ -228,10 +253,25 @@ def _classify_cookie_failure(
 ) -> type[CookieAuthError]:
     """Pick the most specific :class:`CookieAuthError` subclass for a failure.
 
-    Heuristic: scan the response body (and ``Location:`` header) for
-    well-known Microsoft markers. Falls back to the base class when no
-    marker matches.
+    Detection prefers Microsoft's inlined ``ServerData = {...};`` JS blob
+    when present (it's the canonical signed-in/session state) and falls
+    back to body-marker scanning when it isn't. Marker order is
+    FIDO → Consent → Stale so that a page mentioning "passkey" is treated
+    as FIDO regardless of whether the login form is also rendered.
     """
+    server_data = _parse_serverdata(body)
+    if server_data is not None:
+        # Canonical signed-in state. Microsoft uses ``fIsSignedIn`` and
+        # ``arrSessions`` to track active sessions; either being empty
+        # means the cookies are dead.
+        signed_in = server_data.get("fIsSignedIn")
+        sessions = server_data.get("arrSessions")
+        if (
+            signed_in is False
+            or sessions is None
+            or (isinstance(sessions, list) and len(cast(list[object], sessions)) == 0)
+        ):
+            return StaleCookiesError
     lc_body = (body or "").lower()
     lc_loc = (location or "").lower()
     haystack = lc_body + " " + lc_loc
@@ -241,9 +281,10 @@ def _classify_cookie_failure(
         return ConsentRequiredError
     if any(marker in haystack for marker in _STALE_BODY_MARKERS):
         return StaleCookiesError
-    # A 200 OK on the Live-Connect /oauth20_authorize.srf endpoint means
-    # Microsoft handed us the sign-in form instead of an auth code —
-    # cookies are stale.
+    # ``ServerData`` being absent + 200 OK on a Live-Connect URL still
+    # usually means we got the sign-in page (older flows / non-Azure
+    # endpoints don't inline ServerData). Keep the loose login-page
+    # fallback for that case.
     if status_code == 200 and "login" in lc_loc + lc_body[:200]:
         return StaleCookiesError
     return CookieAuthError

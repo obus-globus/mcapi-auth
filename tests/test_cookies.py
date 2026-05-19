@@ -642,3 +642,33 @@ async def test_sisu_raises_stale_cookies_on_login_form() -> None:
     )
     with pytest.raises(StaleCookiesError):
         await login_with_cookies_sisu("MSPAuth=foo")
+
+
+# ---- ServerData-based classification ---------------------------------------
+
+
+def test_classify_serverdata_signed_in_false_is_stale() -> None:
+    html = """<html><script>
+    ServerData = {"fIsSignedIn": false, "arrSessions": null};
+    </script>passkey support enabled</html>"""
+    # body contains "passkey" but ServerData says not signed in — stale wins.
+    assert _classify_cookie_failure(status_code=200, body=html, location=None) is StaleCookiesError
+
+
+def test_classify_serverdata_empty_sessions_is_stale() -> None:
+    html = '<script>ServerData = {"arrSessions": [], "fIsSignedIn": true};</script>'
+    assert _classify_cookie_failure(status_code=200, body=html, location=None) is StaleCookiesError
+
+
+def test_classify_serverdata_signed_in_with_fido_marker_is_fido() -> None:
+    html = """<script>
+    ServerData = {"fIsSignedIn": true, "arrSessions": [{"name": "user@example.com"}]};
+    </script>
+    <p>Use your passkey to continue</p>"""
+    # ServerData says signed in -> fall through to marker ladder -> FIDO.
+    assert _classify_cookie_failure(status_code=200, body=html, location=None) is FidoRequiredError
+
+
+def test_classify_serverdata_malformed_falls_back() -> None:
+    html = "<script>ServerData = {not valid json};</script><p>passkey</p>"
+    assert _classify_cookie_failure(status_code=200, body=html, location=None) is FidoRequiredError

@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.1] - 2026-05-19
+
+### Changed
+
+- **More accurate cookie-error classification.** When Microsoft inlines
+  a ``ServerData = {...};`` JS blob on a 200 response (every modern
+  Live-Connect / Azure-AD page), we now parse it and use
+  ``fIsSignedIn`` / ``arrSessions`` as the canonical signed-in signal
+  before falling back to body markers. This disambiguates two cases
+  the marker ladder couldn't:
+  - a live FIDO-enforced account that *also* mentions "security key"
+    next to a login tile (now correctly: `FidoRequiredError`); and
+  - a stale account whose login page mentions "passkey" as a sign-in
+    option (now correctly: `StaleCookiesError`).
+  Pages that don't carry ``ServerData`` fall through to the existing
+  marker scan, so behavior is unchanged for older / non-Azure
+  endpoints.
+
 ## [0.19.0] - 2026-05-18
 
 ### Added
