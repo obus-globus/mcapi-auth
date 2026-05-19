@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.2] - 2026-05-19
+
+### Changed
+
+- **Sonar polish.** Cleaned up four Sonar findings introduced in 0.19.x:
+  reduced `login_with_cookies_sisu`'s cognitive complexity by extracting
+  the fragment-parsing tail into `_parse_sisu_final_url`; suppressed two
+  intentional-by-design regex warnings (S5857 reluctant quantifier for
+  nested JSON; S6353 ASCII-only label class); and de-nested a ternary
+  in `chain_repr`. No behavior change. 368 tests still pass.
+
 ## [0.19.1] - 2026-05-19
 
 ### Changed

@@ -66,7 +66,10 @@ __all__ = [
 
 logger = logging.getLogger(__name__)
 
-_LABEL_RE = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9._-]{0,63}$")
+# NOSONAR S6353 ASCII-only on purpose; \w admits Unicode word chars on Python.
+# fmt: off
+_LABEL_RE = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9._-]{0,63}$")  # NOSONAR
+# fmt: on
 _SAVE_VERSION = 1
 
 

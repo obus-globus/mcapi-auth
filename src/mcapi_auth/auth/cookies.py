@@ -220,7 +220,10 @@ def _truncate(text: str | None, *, max_chars: int = 512) -> str | None:
     return text if len(text) <= max_chars else text[:max_chars] + "…"
 
 
-_SERVERDATA_RE: Final = re.compile(r"ServerData\s*=\s*(\{.+?\})\s*;", re.DOTALL)
+# NOSONAR S5857 reluctant qty needed; nested-object JSON can't use [^}] safely.
+# fmt: off
+_SERVERDATA_RE: Final = re.compile(r"ServerData\s*=\s*(\{.+?\})\s*;", re.DOTALL)  # NOSONAR
+# fmt: on
 
 
 def _parse_serverdata(body: str | None) -> dict[str, object] | None:
@@ -600,6 +603,20 @@ async def login_with_cookies_sisu(
                 user_agent=user_agent,
             )
 
+    parsed_sisu = _parse_sisu_final_url(final_url)
+    if msa_tokens is not None:
+        return SISUTokens(
+            tokens_by_relying_party=parsed_sisu.tokens_by_relying_party, msa=msa_tokens
+        )
+    return parsed_sisu
+
+
+def _parse_sisu_final_url(final_url: str) -> SISUTokens:
+    """Parse the ``accessToken=`` fragment of the SISU return URL.
+
+    Extracted from :func:`login_with_cookies_sisu` to keep that
+    function's cognitive complexity within Sonar's S3776 budget.
+    """
     fragment = _fragment_of(final_url)
     frag_params = _parse_qs(fragment)
     token_b64_list = frag_params.get("accessToken", [])
@@ -613,12 +630,7 @@ async def login_with_cookies_sisu(
         raise CookieAuthError(f"SISU 'accessToken' fragment is not valid b64+JSON: {e}") from e
     if not isinstance(parsed_obj, list):
         raise CookieAuthError(f"SISU returned non-array payload: {type(parsed_obj).__name__}")
-    parsed_sisu = _parse_sisu_array(cast(list[object], parsed_obj))
-    if msa_tokens is not None:
-        return SISUTokens(
-            tokens_by_relying_party=parsed_sisu.tokens_by_relying_party, msa=msa_tokens
-        )
-    return parsed_sisu
+    return _parse_sisu_array(cast(list[object], parsed_obj))
 
 
 async def _exchange_sisu_code_for_msa(

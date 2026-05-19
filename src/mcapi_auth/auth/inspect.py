@@ -172,7 +172,12 @@ def describe_chain(chain: AuthChain) -> str:
     header = f"AuthChain  client_id={app.client_id}  v1={app.is_v1}"
     lines: list[str] = [header]
     for row in rows:
-        mark = "✓" if row.present and not row.expired else ("·" if row.present else "✗")
+        if row.present and not row.expired:
+            mark = "✓"
+        elif row.present:
+            mark = "·"
+        else:
+            mark = "✗"
         remaining = _format_remaining(row.seconds_remaining)
         preview = f"  ({row.token_preview})" if row.token_preview else ""
         lines.append(f"  {row.name:<10} {mark}  {remaining:<20}{preview}")
