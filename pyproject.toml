@@ -16,7 +16,7 @@ classifiers = [
     "Typing :: Typed",
 ]
 authors = [
-    { name = "clawdbot-silly-waddle", email = "clawdbot-silly-waddle@users.noreply.github.com" }
+    { name = "obus-globus", email = "254700516+obus-globus@users.noreply.github.com" }
 ]
 requires-python = ">=3.14"
 dependencies = [
@@ -29,8 +29,8 @@ dependencies = [
 bedrock = ["cryptography>=43"]
 
 [project.urls]
-Repository = "https://github.com/clawdbot-silly-waddle/mcapi-auth"
-Issues = "https://github.com/clawdbot-silly-waddle/mcapi-auth/issues"
+Repository = "https://github.com/obus-globus/mcapi-auth"
+Issues = "https://github.com/obus-globus/mcapi-auth/issues"
 
 [build-system]
 requires = ["hatchling"]
