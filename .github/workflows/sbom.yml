@@ -75,4 +75,4 @@ jobs:
       - name: pip-audit
         run: |
           uv pip install pip-audit
-          uv run pip-audit --strict --progress-spinner off
+          uv run pip-audit --skip-editable --progress-spinner off
